@@ -1,6 +1,7 @@
 package io.virtualapp.settings;
 
-import android.app.ProgressDialog;
+import android.app.Dialog;
+import io.virtualapp.utils.DialogUtil;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
@@ -35,7 +36,7 @@ public class RecommendPluginActivity extends VActivity {
 
     private List<PluginInfo> mData = new ArrayList<>();
     private PluginAdapter mAdapter;
-    private ProgressDialog mLoadingDialog;
+    private Dialog mLoadingDialog;
 
     private static final String ADDRESS = "http://vaexposed.weishu.me/plugin.json";
 
@@ -43,8 +44,7 @@ public class RecommendPluginActivity extends VActivity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_list);
-        mLoadingDialog = new ProgressDialog(this);
-        mLoadingDialog.setTitle("Loading");
+        mLoadingDialog = DialogUtil.createProgressDialog(this, "Loading");
 
         ListView mListView = findViewById(R.id.list);
         mAdapter = new PluginAdapter();

@@ -71,6 +71,7 @@ public final class AppInstrumentation extends InstrumentationDelegate implements
 
     @Override
     public void callActivityOnCreate(Activity activity, Bundle icicle) {
+        VLog.i(TAG, "AppInstrumentation.callActivityOnCreate: activity=" + (activity != null ? activity.getClass().getName() : "null"));
         if (icicle != null) {
             BundleCompat.clearParcelledData(icicle);
         }
@@ -97,13 +98,16 @@ public final class AppInstrumentation extends InstrumentationDelegate implements
         }
         try {
             super.callActivityOnCreate(activity, icicle);
+            VLog.i(TAG, "AppInstrumentation.callActivityOnCreate SUCCESS: activity=" + (activity != null ? activity.getClass().getName() : "null"));
         } catch (Throwable e) {
-            VLog.e(TAG, "activity crashed when call onCreate, clearing", e);
+            VLog.e(TAG, "AppInstrumentation.callActivityOnCreate CRASH: activity crashed in onCreate: " + (activity != null ? activity.getClass().getName() : "null"), e);
             // 1. tell ui that we launched(failed)
-            Intent intent = activity.getIntent();
+            Intent intent = activity != null ? activity.getIntent() : null;
             callUiCallback(intent, false);
             // 2. finish ourself to tell AMS that do not try launch us again.
-            activity.finish();
+            if (activity != null) {
+                activity.finish();
+            }
             // 3. rethrow
             throw e;
         }
@@ -112,10 +116,13 @@ public final class AppInstrumentation extends InstrumentationDelegate implements
 
     @Override
     public Activity newActivity(Class<?> clazz, Context context, IBinder token, Application application, Intent intent, ActivityInfo info, CharSequence title, Activity parent, String id, Object lastNonConfigurationInstance) throws InstantiationException, IllegalAccessException {
+        VLog.i(TAG, "AppInstrumentation.newActivity: clazz=" + (clazz != null ? clazz.getName() : "null") + ", intent=" + intent);
         try {
-            return super.newActivity(clazz, context, token, application, intent, info, title, parent, id, lastNonConfigurationInstance);
+            Activity act = super.newActivity(clazz, context, token, application, intent, info, title, parent, id, lastNonConfigurationInstance);
+            VLog.i(TAG, "AppInstrumentation.newActivity SUCCESS for clazz=" + (clazz != null ? clazz.getName() : "null") + " -> " + act);
+            return act;
         } catch (Throwable e) {
-            VLog.e(TAG, "activity crashed when call newActivity, clearing", e);
+            VLog.e(TAG, "AppInstrumentation.newActivity CRASH for clazz=" + (clazz != null ? clazz.getName() : "null"), e);
             // 1. tell ui that we launched(failed)
             callUiCallback(intent, false);
             // 3. rethrow
@@ -125,10 +132,13 @@ public final class AppInstrumentation extends InstrumentationDelegate implements
 
     @Override
     public Activity newActivity(ClassLoader cl, String className, Intent intent) throws InstantiationException, IllegalAccessException, ClassNotFoundException {
+        VLog.i(TAG, "AppInstrumentation.newActivity: className=" + className + ", intent=" + intent);
         try {
-            return super.newActivity(cl, className, intent);
+            Activity act = super.newActivity(cl, className, intent);
+            VLog.i(TAG, "AppInstrumentation.newActivity SUCCESS for className=" + className + " -> " + act);
+            return act;
         } catch (Throwable e) {
-            VLog.e(TAG, "activity crashed when call newActivity, clearing", e);
+            VLog.e(TAG, "AppInstrumentation.newActivity CRASH for className=" + className, e);
             // 1. tell ui that we launched(failed)
             callUiCallback(intent, false);
             // 3. rethrow
@@ -146,11 +156,12 @@ public final class AppInstrumentation extends InstrumentationDelegate implements
 
     @Override
     public void callActivityOnResume(Activity activity) {
+        VLog.i(TAG, "AppInstrumentation.callActivityOnResume: activity=" + (activity != null ? activity.getClass().getName() : "null"));
         VirtualCore.get().getComponentDelegate().beforeActivityResume(activity);
         VActivityManager.get().onActivityResumed(activity);
         super.callActivityOnResume(activity);
         VirtualCore.get().getComponentDelegate().afterActivityResume(activity);
-        Intent intent = activity.getIntent();
+        Intent intent = activity != null ? activity.getIntent() : null;
 
         callUiCallback(intent, true);
     }
@@ -158,6 +169,7 @@ public final class AppInstrumentation extends InstrumentationDelegate implements
 
     @Override
     public void callActivityOnDestroy(Activity activity) {
+        VLog.i(TAG, "AppInstrumentation.callActivityOnDestroy: activity=" + (activity != null ? activity.getClass().getName() : "null"));
         VirtualCore.get().getComponentDelegate().beforeActivityDestroy(activity);
         super.callActivityOnDestroy(activity);
         VirtualCore.get().getComponentDelegate().afterActivityDestroy(activity);
@@ -165,6 +177,7 @@ public final class AppInstrumentation extends InstrumentationDelegate implements
 
     @Override
     public void callActivityOnPause(Activity activity) {
+        VLog.i(TAG, "AppInstrumentation.callActivityOnPause: activity=" + (activity != null ? activity.getClass().getName() : "null"));
         VirtualCore.get().getComponentDelegate().beforeActivityPause(activity);
         super.callActivityOnPause(activity);
         VirtualCore.get().getComponentDelegate().afterActivityPause(activity);
@@ -173,7 +186,14 @@ public final class AppInstrumentation extends InstrumentationDelegate implements
 
     @Override
     public void callApplicationOnCreate(Application app) {
+        VLog.i(TAG, "AppInstrumentation.callApplicationOnCreate: app=" + (app != null ? app.getClass().getName() : "null"));
         super.callApplicationOnCreate(app);
+    }
+
+    @Override
+    public boolean onException(Object obj, Throwable e) {
+        VLog.e(TAG, "AppInstrumentation.onException: obj=" + obj, e);
+        return super.onException(obj, e);
     }
 
     /**
@@ -182,6 +202,7 @@ public final class AppInstrumentation extends InstrumentationDelegate implements
      */
     private void callUiCallback(Intent intent, boolean success) {
         IUiCallback callback = VirtualCore.getUiCallback(intent);
+        VLog.i(TAG, "AppInstrumentation.callUiCallback: callback=" + callback + ", success=" + success + ", pkg=" + VClientImpl.get().getCurrentPackage() + ", userId=" + VUserHandle.myUserId());
         if (callback != null) {
             try {
                 if (success) {
@@ -190,7 +211,7 @@ public final class AppInstrumentation extends InstrumentationDelegate implements
                     callback.onOpenFailed(VClientImpl.get().getCurrentPackage(), VUserHandle.myUserId());
                 }
             } catch (RemoteException e) {
-                e.printStackTrace();
+                VLog.e(TAG, "AppInstrumentation.callUiCallback: RemoteException:", e);
             }
         }
     }

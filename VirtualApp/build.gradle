@@ -4,7 +4,12 @@ buildscript {
     repositories {
         google()
         mavenCentral()
-        maven { url 'https://jitpack.io' }
+        maven { url = uri('https://jitpack.io') }
+        maven { url = uri('https://maven.aliyun.com/repository/public') }
+        maven { url = uri('https://maven.aliyun.com/repository/jcenter') }
+        maven { url = uri('https://jcenter.bintray.com') }
+        maven { url = uri('https://raw.githubusercontent.com/tiann/epic/master/repository') }
+        maven { url = uri('https://raw.githubusercontent.com/android-hacker/exposed/master/repository') }
     }
     dependencies {
         classpath 'com.android.tools.build:gradle:8.12.0'
@@ -16,11 +21,24 @@ allprojects {
         google()
         mavenCentral()
         mavenLocal()
-        maven { url 'https://jitpack.io' }
+        maven { url = uri('https://jitpack.io') }
+        maven { url = uri('https://maven.aliyun.com/repository/public') }
+        maven { url = uri('https://maven.aliyun.com/repository/jcenter') }
+        maven { url = uri('https://jcenter.bintray.com') }
+        maven { url = uri('https://raw.githubusercontent.com/tiann/epic/master/repository') }
+        maven { url = uri('https://raw.githubusercontent.com/android-hacker/exposed/master/repository') }
     }
 }
 
 tasks.register('clean', Delete) {
     delete rootProject.layout.buildDirectory
 }
+
+subprojects {
+    tasks.withType(JavaCompile).configureEach {
+        options.compilerArgs += ["-Xlint:-deprecation", "-Xlint:-unchecked"]
+    }
+}
+
+
 

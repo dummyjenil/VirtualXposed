@@ -1,19 +1,22 @@
 package io.virtualapp.settings;
 
-import android.app.Activity;
-import android.app.ProgressDialog;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
-import android.preference.Preference;
-import android.preference.PreferenceFragment;
-import android.preference.PreferenceScreen;
-import android.preference.SwitchPreference;
 import android.widget.Toast;
 
-import com.android.launcher3.LauncherFiles;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.preference.Preference;
+import androidx.preference.PreferenceFragmentCompat;
+import androidx.preference.PreferenceScreen;
+import androidx.preference.SwitchPreference;
+
 import com.lody.virtual.client.core.VirtualCore;
 import com.lody.virtual.client.env.Constants;
 import com.lody.virtual.client.ipc.VActivityManager;
@@ -28,10 +31,11 @@ import io.virtualapp.home.ListAppActivity;
 import io.virtualapp.utils.Misc;
 
 /**
- * Settings activity for Launcher. Currently implements the following setting: Allow rotation
+ * Modernized Settings Activity using AndroidX PreferenceFragmentCompat and AppCompatActivity
  */
-public class SettingsActivity extends Activity {
+public class SettingsActivity extends AppCompatActivity implements PreferenceFragmentCompat.OnPreferenceStartScreenCallback {
 
+    public static final String SHARED_PREFERENCES_KEY = "com.android.launcher3.prefs";
     private static final String ADVANCE_SETTINGS_KEY = "settings_advance";
     private static final String ADD_APP_KEY = "settings_add_app";
     private static final String MODULE_MANAGE_KEY = "settings_module_manage";
@@ -57,28 +61,53 @@ public class SettingsActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+            getSupportActionBar().setTitle(R.string.settings_title);
+        }
 
         if (savedInstanceState == null) {
-            // Display the fragment as the main content.
-            getFragmentManager().beginTransaction()
+            getSupportFragmentManager().beginTransaction()
                     .replace(android.R.id.content, new SettingsFragment())
                     .commit();
         }
     }
 
-    /**
-     * This fragment shows the launcher preferences.
-     */
-    public static class SettingsFragment extends PreferenceFragment {
+    @Override
+    public boolean onPreferenceStartScreen(PreferenceFragmentCompat caller, PreferenceScreen pref) {
+        SettingsFragment fragment = new SettingsFragment();
+        Bundle args = new Bundle();
+        args.putString(PreferenceFragmentCompat.ARG_PREFERENCE_ROOT, pref.getKey());
+        fragment.setArguments(args);
+        getSupportFragmentManager().beginTransaction()
+                .replace(android.R.id.content, fragment, pref.getKey())
+                .addToBackStack(pref.getKey())
+                .commit();
+        return true;
+    }
 
+    @Override
+    public boolean onOptionsItemSelected(android.view.MenuItem item) {
+        if (item.getItemId() == android.R.id.home) {
+            if (getSupportFragmentManager().getBackStackEntryCount() > 0) {
+                getSupportFragmentManager().popBackStack();
+            } else {
+                finish();
+            }
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    /**
+     * Modern AndroidX PreferenceFragmentCompat
+     */
+    public static class SettingsFragment extends PreferenceFragmentCompat {
 
         @Override
-        public void onCreate(Bundle savedInstanceState) {
-            super.onCreate(savedInstanceState);
-            getPreferenceManager().setSharedPreferencesName(LauncherFiles.SHARED_PREFERENCES_KEY);
-            addPreferencesFromResource(R.xml.settings_preferences);
-
-            // Setup allow rotation preference
+        public void onCreatePreferences(@Nullable Bundle savedInstanceState, @Nullable String rootKey) {
+            getPreferenceManager().setSharedPreferencesName(SHARED_PREFERENCES_KEY);
+            setPreferencesFromResource(R.xml.settings_preferences, rootKey);
 
             Preference addApp = findPreference(ADD_APP_KEY);
             Preference moduleManage = findPreference(MODULE_MANAGE_KEY);
@@ -93,237 +122,269 @@ public class SettingsActivity extends Activity {
             Preference fileMange = findPreference(FILE_MANAGE);
             Preference permissionManage = findPreference(PERMISSION_MANAGE);
 
+            SwitchPreference disableInstaller = findPreference(DISABLE_INSTALLER_KEY);
+            SwitchPreference enableLauncher = findPreference(ENABLE_LAUNCHER);
+            SwitchPreference disableResidentNotification = findPreference(DISABLE_RESIDENT_NOTIFICATION);
+            SwitchPreference allowFakeSignature = findPreference(ALLOW_FAKE_SIGNATURE);
+            SwitchPreference disableXposed = findPreference(DISABLE_XPOSED);
 
-            SwitchPreference disableInstaller = (SwitchPreference) findPreference(DISABLE_INSTALLER_KEY);
-            SwitchPreference enableLauncher = (SwitchPreference) findPreference(ENABLE_LAUNCHER);
-            SwitchPreference disableResidentNotification = (SwitchPreference) findPreference(DISABLE_RESIDENT_NOTIFICATION);
-            SwitchPreference allowFakeSignature = (SwitchPreference) findPreference(ALLOW_FAKE_SIGNATURE);
-            SwitchPreference disableXposed = (SwitchPreference) findPreference(DISABLE_XPOSED);
-
-            addApp.setOnPreferenceClickListener(preference -> {
-                ListAppActivity.gotoListApp(getActivity());
-                return false;
-            });
-
-            moduleManage.setOnPreferenceClickListener(preference -> {
-                try {
-                    Intent t = new Intent();
-                    t.setComponent(new ComponentName("de.robv.android.xposed.installer", "de.robv.android.xposed.installer.WelcomeActivity"));
-                    t.putExtra("fragment", 1);
-                    int ret = VActivityManager.get().startActivity(t, 0);
-                    if (ret < 0) {
-                        Toast.makeText(getActivity(), R.string.xposed_installer_not_found, Toast.LENGTH_SHORT).show();
+            if (addApp != null) {
+                addApp.setOnPreferenceClickListener(preference -> {
+                    if (getActivity() != null) {
+                        ListAppActivity.gotoListApp(getActivity());
                     }
-                } catch (Throwable ignored) {
-                    ignored.printStackTrace();
-                }
-                return false;
-            });
+                    return false;
+                });
+            }
 
-            recommend.setOnPreferenceClickListener(preference -> {
-                startActivity(new Intent(getActivity(), RecommendPluginActivity.class));
-                return false;
-            });
+            if (moduleManage != null) {
+                moduleManage.setOnPreferenceClickListener(preference -> {
+                    try {
+                        Intent t = new Intent();
+                        t.setComponent(new ComponentName("de.robv.android.xposed.installer", "de.robv.android.xposed.installer.WelcomeActivity"));
+                        t.putExtra("fragment", 1);
+                        int ret = VActivityManager.get().startActivity(t, 0);
+                        if (ret < 0 && getContext() != null) {
+                            Toast.makeText(getContext(), R.string.xposed_installer_not_found, Toast.LENGTH_SHORT).show();
+                        }
+                    } catch (Throwable ignored) {
+                        ignored.printStackTrace();
+                    }
+                    return false;
+                });
+            }
+
+            if (recommend != null) {
+                recommend.setOnPreferenceClickListener(preference -> {
+                    startActivity(new Intent(getActivity(), RecommendPluginActivity.class));
+                    return false;
+                });
+            }
 
             boolean xposedEnabled = VirtualCore.get().isXposedEnabled();
             if (!xposedEnabled) {
-                getPreferenceScreen().removePreference(moduleManage);
-                getPreferenceScreen().removePreference(recommend);
+                if (moduleManage != null) {
+                    getPreferenceScreen().removePreference(moduleManage);
+                }
+                if (recommend != null) {
+                    getPreferenceScreen().removePreference(recommend);
+                }
             }
 
-            appManage.setOnPreferenceClickListener(preference -> {
-                startActivity(new Intent(getActivity(), AppManageActivity.class));
-                return false;
-            });
-
-            taskManage.setOnPreferenceClickListener(preference -> {
-                startActivity(new Intent(getActivity(), TaskManageActivity.class));
-                return false;
-            });
-
-            faq.setOnPreferenceClickListener(preference -> {
-                Uri uri = Uri.parse("https://github.com/android-hacker/VAExposed/wiki/FAQ");
-                Intent t = new Intent(Intent.ACTION_VIEW, uri);
-                startActivity(t);
-                return false;
-            });
-
-            desktop.setOnPreferenceClickListener(preference -> {
-                startActivity(new Intent(getActivity(), com.google.android.apps.nexuslauncher.SettingsActivity.class));
-                return false;
-            });
-
-            donate.setOnPreferenceClickListener(preference -> {
-                Misc.showDonate(getActivity());
-                return false;
-            });
-            about.setOnPreferenceClickListener(preference -> {
-                startActivity(new Intent(getActivity(), AboutActivity.class));
-                return false;
-            });
-
-            reboot.setOnPreferenceClickListener(preference -> {
-                android.app.AlertDialog alertDialog = new android.app.AlertDialog.Builder(getActivity())
-                        .setTitle(R.string.settings_reboot_title)
-                        .setMessage(getResources().getString(R.string.settings_reboot_content))
-                        .setPositiveButton(android.R.string.yes, (dialog, which) -> {
-                            VirtualCore.get().killAllApps();
-                            Toast.makeText(getActivity(), R.string.reboot_tips_1, Toast.LENGTH_SHORT).show();
-                        })
-                        .setNegativeButton(android.R.string.no, null)
-                        .create();
-                try {
-                    alertDialog.show();
-                } catch (Throwable ignored) {
-                }
-                return false;
-            });
-
-            disableInstaller.setOnPreferenceChangeListener((preference, newValue) -> {
-                if (!(newValue instanceof Boolean)) {
+            if (appManage != null) {
+                appManage.setOnPreferenceClickListener(preference -> {
+                    startActivity(new Intent(getActivity(), AppManageActivity.class));
                     return false;
-                }
-                try {
-                    boolean disable = (boolean) newValue;
-                    PackageManager packageManager = getActivity().getPackageManager();
-                    packageManager.setComponentEnabledSetting(new ComponentName(getActivity().getPackageName(), "vxp.installer"),
-                            !disable ? PackageManager.COMPONENT_ENABLED_STATE_ENABLED : PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
-                            PackageManager.DONT_KILL_APP);
-                    return true;
-                } catch (Throwable ignored) {
-                    return false;
-                }
-            });
+                });
+            }
 
-            enableLauncher.setOnPreferenceChangeListener((preference, newValue) -> {
-                if (!(newValue instanceof Boolean)) {
+            if (taskManage != null) {
+                taskManage.setOnPreferenceClickListener(preference -> {
+                    startActivity(new Intent(getActivity(), TaskManageActivity.class));
                     return false;
-                }
-                try {
-                    boolean enable = (boolean) newValue;
-                    PackageManager packageManager = getActivity().getPackageManager();
-                    packageManager.setComponentEnabledSetting(new ComponentName(getActivity().getPackageName(), "vxp.launcher"),
-                            enable ? PackageManager.COMPONENT_ENABLED_STATE_ENABLED : PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
-                            PackageManager.DONT_KILL_APP);
-                    return true;
-                } catch (Throwable ignored) {
+                });
+            }
+
+            if (faq != null) {
+                faq.setOnPreferenceClickListener(preference -> {
+                    Uri uri = Uri.parse("https://github.com/android-hacker/VAExposed/wiki/FAQ");
+                    Intent t = new Intent(Intent.ACTION_VIEW, uri);
+                    startActivity(t);
                     return false;
-                }
-            });
+                });
+            }
+
+            if (desktop != null) {
+                desktop.setOnPreferenceClickListener(preference -> {
+                    if (getContext() != null) {
+                        Toast.makeText(getContext(), R.string.settings_desktop_text, Toast.LENGTH_SHORT).show();
+                    }
+                    return false;
+                });
+            }
+
+            if (donate != null) {
+                donate.setOnPreferenceClickListener(preference -> {
+                    if (getActivity() != null) {
+                        Misc.showDonate(getActivity());
+                    }
+                    return false;
+                });
+            }
+
+            if (about != null) {
+                about.setOnPreferenceClickListener(preference -> {
+                    startActivity(new Intent(getActivity(), AboutActivity.class));
+                    return false;
+                });
+            }
+
+            if (reboot != null) {
+                reboot.setOnPreferenceClickListener(preference -> {
+                    if (getActivity() != null) {
+                        new AlertDialog.Builder(getActivity())
+                                .setTitle(R.string.settings_reboot_title)
+                                .setMessage(getResources().getString(R.string.settings_reboot_content))
+                                .setPositiveButton(android.R.string.ok, (dialog, which) -> {
+                                    VirtualCore.get().killAllApps();
+                                    if (getContext() != null) {
+                                        Toast.makeText(getContext(), R.string.reboot_tips_1, Toast.LENGTH_SHORT).show();
+                                    }
+                                })
+                                .setNegativeButton(android.R.string.cancel, null)
+                                .show();
+                    }
+                    return false;
+                });
+            }
+
+            if (disableInstaller != null) {
+                disableInstaller.setOnPreferenceChangeListener((preference, newValue) -> {
+                    if (!(newValue instanceof Boolean) || getActivity() == null) {
+                        return false;
+                    }
+                    try {
+                        boolean disable = (boolean) newValue;
+                        PackageManager packageManager = getActivity().getPackageManager();
+                        packageManager.setComponentEnabledSetting(new ComponentName(getActivity().getPackageName(), "vxp.installer"),
+                                !disable ? PackageManager.COMPONENT_ENABLED_STATE_ENABLED : PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                                PackageManager.DONT_KILL_APP);
+                        return true;
+                    } catch (Throwable ignored) {
+                        return false;
+                    }
+                });
+            }
+
+            if (enableLauncher != null) {
+                enableLauncher.setOnPreferenceChangeListener((preference, newValue) -> {
+                    if (!(newValue instanceof Boolean) || getActivity() == null) {
+                        return false;
+                    }
+                    try {
+                        boolean enable = (boolean) newValue;
+                        PackageManager packageManager = getActivity().getPackageManager();
+                        packageManager.setComponentEnabledSetting(new ComponentName(getActivity().getPackageName(), "vxp.launcher"),
+                                enable ? PackageManager.COMPONENT_ENABLED_STATE_ENABLED : PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                                PackageManager.DONT_KILL_APP);
+                        return true;
+                    } catch (Throwable ignored) {
+                        return false;
+                    }
+                });
+            }
 
             Preference installGms = findPreference(INSTALL_GMS_KEY);
-            installGms.setOnPreferenceClickListener(preference -> {
-                boolean alreadyInstalled = FakeGms.isAlreadyInstalled(getActivity());
-                if (alreadyInstalled) {
-                    FakeGms.uninstallGms(getActivity());
-                } else {
-                    FakeGms.installGms(getActivity());
-                }
-                return true;
-            });
-
-            fileMange.setOnPreferenceClickListener(preference -> {
-                OnlinePlugin.openOrDownload(getActivity(), OnlinePlugin.FILE_MANAGE_PACKAGE,
-                        OnlinePlugin.FILE_MANAGE_URL, getString(R.string.install_file_manager_tips));
-                return false;
-            });
-
-            permissionManage.setOnPreferenceClickListener(preference -> {
-                OnlinePlugin.openOrDownload(getActivity(), OnlinePlugin.PERMISSION_MANAGE_PACKAGE,
-                        OnlinePlugin.PERMISSION_MANAGE_URL, getString(R.string.install_permission_manager_tips));
-                return false;
-            });
-
-            disableXposed.setOnPreferenceChangeListener((preference, newValue) -> {
-
-                if (!(newValue instanceof Boolean)) {
-                    return false;
-                }
-
-                boolean on = (boolean) newValue;
-
-                File disableXposedFile = getActivity().getFileStreamPath(".disable_xposed"); // 文件不存在代表是保守模式
-                if (on) {
-                    boolean success;
-                    try {
-                        success = disableXposedFile.createNewFile();
-                    } catch (IOException e) {
-                        success = false;
+            if (installGms != null) {
+                installGms.setOnPreferenceClickListener(preference -> {
+                    if (getActivity() != null) {
+                        boolean alreadyInstalled = FakeGms.isAlreadyInstalled(getActivity());
+                        if (alreadyInstalled) {
+                            FakeGms.uninstallGms(getActivity());
+                        } else {
+                            FakeGms.installGms(getActivity());
+                        }
                     }
-                    return success;
-                } else {
-                    return !disableXposedFile.exists() || disableXposedFile.delete();
-                }
-            });
-
-            disableResidentNotification.setOnPreferenceChangeListener(((preference, newValue) -> {
-
-                if (!(newValue instanceof Boolean)) {
-                    return false;
-                }
-
-                boolean on = (boolean) newValue;
-
-                File flag = getActivity().getFileStreamPath(Constants.NO_NOTIFICATION_FLAG);
-                if (on) {
-                    boolean success;
-                    try {
-                        success = flag.createNewFile();
-                    } catch (IOException e) {
-                        success = false;
-                    }
-                    return success;
-                } else {
-                    return !flag.exists() || flag.delete();
-                }
-            }));
-
-            if (android.os.Build.VERSION.SDK_INT < 25) {
-                // Android NR1 below do not need this.
-                PreferenceScreen advance = (PreferenceScreen) findPreference(ADVANCE_SETTINGS_KEY);
-                advance.removePreference(disableResidentNotification);
+                    return true;
+                });
             }
 
-            allowFakeSignature.setOnPreferenceChangeListener((preference, newValue) -> {
-                if (!(newValue instanceof Boolean)) {
-                    return false;
-                }
-
-                boolean on = (boolean) newValue;
-                File flag = getActivity().getFileStreamPath(Constants.FAKE_SIGNATURE_FLAG);
-                if (on) {
-                    boolean success;
-                    try {
-                        success = flag.createNewFile();
-                    } catch (IOException e) {
-                        success = false;
+            if (fileMange != null) {
+                fileMange.setOnPreferenceClickListener(preference -> {
+                    if (getActivity() != null) {
+                        OnlinePlugin.openOrDownload(getActivity(), OnlinePlugin.FILE_MANAGE_PACKAGE,
+                                OnlinePlugin.FILE_MANAGE_URL, getString(R.string.install_file_manager_tips));
                     }
-                    return success;
-                } else {
-                    return !flag.exists() || flag.delete();
-                }
-            });
-
-        }
-
-        private static void dismiss(ProgressDialog dialog) {
-            try {
-                dialog.dismiss();
-            } catch (Throwable ignored) {
+                    return false;
+                });
             }
-        }
 
-        protected int dp2px(float dp) {
-            final float scale = getResources().getDisplayMetrics().density;
-            return (int) (dp * scale + 0.5f);
+            if (permissionManage != null) {
+                permissionManage.setOnPreferenceClickListener(preference -> {
+                    if (getActivity() != null) {
+                        OnlinePlugin.openOrDownload(getActivity(), OnlinePlugin.PERMISSION_MANAGE_PACKAGE,
+                                OnlinePlugin.PERMISSION_MANAGE_URL, getString(R.string.install_permission_manager_tips));
+                    }
+                    return false;
+                });
+            }
+
+            if (disableXposed != null) {
+                disableXposed.setOnPreferenceChangeListener((preference, newValue) -> {
+                    if (!(newValue instanceof Boolean) || getActivity() == null) {
+                        return false;
+                    }
+
+                    boolean on = (boolean) newValue;
+                    File disableXposedFile = getActivity().getFileStreamPath(".disable_xposed");
+                    if (on) {
+                        try {
+                            return disableXposedFile.createNewFile();
+                        } catch (IOException e) {
+                            return false;
+                        }
+                    } else {
+                        return !disableXposedFile.exists() || disableXposedFile.delete();
+                    }
+                });
+            }
+
+            if (disableResidentNotification != null) {
+                disableResidentNotification.setOnPreferenceChangeListener((preference, newValue) -> {
+                    if (!(newValue instanceof Boolean) || getActivity() == null) {
+                        return false;
+                    }
+
+                    boolean on = (boolean) newValue;
+                    File flag = getActivity().getFileStreamPath(Constants.NO_NOTIFICATION_FLAG);
+                    if (on) {
+                        try {
+                            return flag.createNewFile();
+                        } catch (IOException e) {
+                            return false;
+                        }
+                    } else {
+                        return !flag.exists() || flag.delete();
+                    }
+                });
+            }
+
+            if (Build.VERSION.SDK_INT < 25 && disableResidentNotification != null) {
+                PreferenceScreen advance = findPreference(ADVANCE_SETTINGS_KEY);
+                if (advance != null) {
+                    advance.removePreference(disableResidentNotification);
+                }
+            }
+
+            if (allowFakeSignature != null) {
+                allowFakeSignature.setOnPreferenceChangeListener((preference, newValue) -> {
+                    if (!(newValue instanceof Boolean) || getActivity() == null) {
+                        return false;
+                    }
+
+                    boolean on = (boolean) newValue;
+                    File flag = getActivity().getFileStreamPath(Constants.FAKE_SIGNATURE_FLAG);
+                    if (on) {
+                        try {
+                            return flag.createNewFile();
+                        } catch (IOException e) {
+                            return false;
+                        }
+                    } else {
+                        return !flag.exists() || flag.delete();
+                    }
+                });
+            }
         }
 
         @Override
-        public void startActivity(Intent intent) {
+        public void startActivity(@NonNull Intent intent) {
             try {
                 super.startActivity(intent);
             } catch (Throwable ignored) {
-                Toast.makeText(getActivity(), "startActivity failed.", Toast.LENGTH_SHORT).show();
+                if (getContext() != null) {
+                    Toast.makeText(getContext(), "startActivity failed.", Toast.LENGTH_SHORT).show();
+                }
                 ignored.printStackTrace();
             }
         }
@@ -331,6 +392,7 @@ public class SettingsActivity extends Activity {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == VCommends.REQUEST_SELECT_APP) {
             if (resultCode == RESULT_OK) {
                 finish();

@@ -115,7 +115,7 @@ public class ShareBridgeActivity extends AppCompatActivity {
             try {
                 holder.icon.setImageDrawable(item.loadIcon(packageManager));
             } catch (Throwable e) {
-                holder.icon.setImageDrawable(getResources().getDrawable(android.R.drawable.sym_def_app_icon));
+                holder.icon.setImageDrawable(androidx.core.content.ContextCompat.getDrawable(ShareBridgeActivity.this, android.R.drawable.sym_def_app_icon));
             }
 
             return convertView;

@@ -62,8 +62,13 @@ class VSPersistenceLayer extends PersistenceLayer {
         int N = p.readInt();
         while (N-- > 0) {
             int userId = p.readInt();
-            //noinspection unchecked
-            HashMap<String, VSConfig> userMap = p.readHashMap(VSConfig.class.getClassLoader());
+            HashMap<String, VSConfig> userMap;
+            if (android.os.Build.VERSION.SDK_INT >= 33) {
+                userMap = p.readHashMap(VSConfig.class.getClassLoader(), String.class, VSConfig.class);
+            } else {
+                //noinspection unchecked
+                userMap = p.readHashMap(VSConfig.class.getClassLoader());
+            }
             configs.put(userId, userMap);
         }
     }

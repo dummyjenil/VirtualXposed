@@ -153,31 +153,51 @@ class FitTextHelper {
      * @return 文本布局
      */
     public static StaticLayout getStaticLayout(TextView textView, CharSequence text, TextPaint paint) {
-        StaticLayout layout;
+        int width = getTextWidth(textView);
+        Layout.Alignment alignment;
+        float spacingMult;
+        float spacingAdd;
+        boolean includePad;
+
         if (textView instanceof FitTextView) {
             FitTextView fitTextView = (FitTextView) textView;
-            layout = new StaticLayout(text, paint, getTextWidth(textView),
-                    getLayoutAlignment(fitTextView), fitTextView.getLineSpacingMultiplierCompat(),
-                    fitTextView.getLineSpacingExtraCompat(), fitTextView.getIncludeFontPaddingCompat());
+            alignment = getLayoutAlignment(fitTextView);
+            spacingMult = fitTextView.getLineSpacingMultiplierCompat();
+            spacingAdd = fitTextView.getLineSpacingExtraCompat();
+            includePad = fitTextView.getIncludeFontPaddingCompat();
         } else {
+            alignment = getLayoutAlignment(textView);
             if (Build.VERSION.SDK_INT <= 16) {
-                layout = new StaticLayout(text, paint, getTextWidth(textView),
-                        getLayoutAlignment(textView), 0, 0, false);
+                spacingMult = 0;
+                spacingAdd = 0;
+                includePad = false;
             } else {
-                layout = new StaticLayout(text, paint, getTextWidth(textView),
-                        getLayoutAlignment(textView), textView.getLineSpacingMultiplier(),
-                        textView.getLineSpacingExtra(), textView.getIncludeFontPadding());
+                spacingMult = textView.getLineSpacingMultiplier();
+                spacingAdd = textView.getLineSpacingExtra();
+                includePad = textView.getIncludeFontPadding();
             }
         }
-        if(isSingleLine(textView)) {
-            try {
-                Field field = StaticLayout.class.getDeclaredField("mMaximumVisibleLineCount");
-                if (field != null) {
+
+        StaticLayout layout;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            StaticLayout.Builder builder = StaticLayout.Builder.obtain(text, 0, text.length(), paint, width)
+                    .setAlignment(alignment)
+                    .setLineSpacing(spacingAdd, spacingMult)
+                    .setIncludePad(includePad);
+            if (isSingleLine(textView)) {
+                builder.setMaxLines(1);
+            }
+            layout = builder.build();
+        } else {
+            layout = new StaticLayout(text, paint, width, alignment, spacingMult, spacingAdd, includePad);
+            if (isSingleLine(textView)) {
+                try {
+                    Field field = StaticLayout.class.getDeclaredField("mMaximumVisibleLineCount");
                     field.setAccessible(true);
                     field.set(layout, 1);
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
             }
         }
         return layout;

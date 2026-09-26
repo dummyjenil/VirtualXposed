@@ -77,16 +77,22 @@ static struct {
 
 
 jint getCallingUid(alias_ref<jclass> clazz) {
-    jint uid;
+    jint uid = 0;
     if (patchEnv.is_art) {
-        uid = patchEnv.jni_orig_getCallingUid(Environment::ensureCurrentThreadIsAttached(),
-                                              clazz.get());
+        if (patchEnv.jni_orig_getCallingUid != nullptr) {
+            uid = patchEnv.jni_orig_getCallingUid(Environment::ensureCurrentThreadIsAttached(),
+                                                  clazz.get());
+        }
     } else {
-        uid = patchEnv.native_getCallingUid(patchEnv.IPCThreadState_self());
+        if (patchEnv.native_getCallingUid != nullptr && patchEnv.IPCThreadState_self != nullptr) {
+            uid = patchEnv.native_getCallingUid(patchEnv.IPCThreadState_self());
+        }
     }
-    uid = Environment::ensureCurrentThreadIsAttached()->CallStaticIntMethod(nativeEngineClass.get(),
-                                                                            patchEnv.method_onGetCallingUid,
-                                                                            uid);
+    if (patchEnv.method_onGetCallingUid != nullptr && nativeEngineClass.get() != nullptr) {
+        uid = Environment::ensureCurrentThreadIsAttached()->CallStaticIntMethod(nativeEngineClass.get(),
+                                                                                patchEnv.method_onGetCallingUid,
+                                                                                uid);
+    }
     return uid;
 }
 
@@ -387,6 +393,11 @@ replaceAudioRecordNativeCheckPermission(jobject javaMethod, jboolean isArt, int 
 void hookAndroidVM(JArrayClass<jobject> javaMethods,
                    jstring packageName, jboolean isArt, jint apiLevel,
                    jint cameraMethodType) {
+
+    if (apiLevel >= 29) {
+        // ArtMethod in-memory structure patching is incompatible with Android 10+ (API 29+)
+        return;
+    }
 
     JNIEnv *env = Environment::current();
 

@@ -196,32 +196,32 @@ public class TransactionHandlerProxy extends ClientTransactionHandler {
 
     @Override
     public Activity handleLaunchActivity(ActivityClientRecord r, PendingTransactionActions pendingActions, Intent customIntent) {
-
         Intent stubIntent = mirror.android.app.ActivityThread.ActivityClientRecord.intent.get(r);
+        Log.i(TAG, "TransactionHandlerProxy.handleLaunchActivity START: stubIntent=" + stubIntent);
         StubActivityRecord saveInstance = new StubActivityRecord(stubIntent);
         if (saveInstance.intent == null) {
-            Log.i(TAG, "save instance intent is null, return");
-            return null;
+            Log.w(TAG, "TransactionHandlerProxy.handleLaunchActivity: saveInstance.intent is null for stubIntent=" + stubIntent + ", delegating to originalHandler.");
+            return originalHandler.handleLaunchActivity(r, pendingActions, customIntent);
         }
         Intent intent = saveInstance.intent;
         ComponentName caller = saveInstance.caller;
         IBinder token = mirror.android.app.ActivityThread.ActivityClientRecord.token.get(r);
         ActivityInfo info = saveInstance.info;
+        Log.i(TAG, "TransactionHandlerProxy.handleLaunchActivity: target pkg=" + info.packageName + ", activity=" + info.name + ", isBound=" + VClientImpl.get().isBound());
         if (VClientImpl.get().getToken() == null) {
             InstalledAppInfo installedAppInfo = VirtualCore.get().getInstalledAppInfo(info.packageName, 0);
             if (installedAppInfo == null) {
-                Log.i(TAG, "install app info is null, return");
+                Log.e(TAG, "TransactionHandlerProxy.handleLaunchActivity FAILED: installedAppInfo is null for " + info.packageName);
                 return null;
             }
+            Log.w(TAG, "TransactionHandlerProxy.handleLaunchActivity: VClient token is null, restarting process for " + info.packageName);
             VActivityManager.get().processRestarted(info.packageName, info.processName, saveInstance.userId);
-            // getH().sendMessageAtFrontOfQueue(Message.obtain(msg));
-            Log.i(TAG, "restart process, return");
             return handleLaunchActivity(r, pendingActions, customIntent);
         }
         if (!VClientImpl.get().isBound()) {
+            Log.i(TAG, "TransactionHandlerProxy.handleLaunchActivity: binding application for " + info.packageName);
             VClientImpl.get().bindApplicationForActivity(info.packageName, info.processName, intent);
-            // getH().sendMessageAtFrontOfQueue(Message.obtain(msg));
-            Log.i(TAG, "rebound application, return");
+            Log.i(TAG, "TransactionHandlerProxy.handleLaunchActivity: rebound application finished, resuming launch");
             return handleLaunchActivity(r, pendingActions, customIntent);
         }
         int taskId = IActivityManager.getTaskForActivity.call(
@@ -240,7 +240,15 @@ public class TransactionHandlerProxy extends ClientTransactionHandler {
         mirror.android.app.ActivityThread.ActivityClientRecord.intent.set(r, intent);
         mirror.android.app.ActivityThread.ActivityClientRecord.activityInfo.set(r, info);
 
-        return originalHandler.handleLaunchActivity(r, pendingActions, customIntent);
+        Log.i(TAG, "TransactionHandlerProxy.handleLaunchActivity: calling originalHandler.handleLaunchActivity for " + info.name);
+        try {
+            Activity act = originalHandler.handleLaunchActivity(r, pendingActions, customIntent);
+            Log.i(TAG, "TransactionHandlerProxy.handleLaunchActivity SUCCESS: returned activity=" + act);
+            return act;
+        } catch (Throwable t) {
+            Log.e(TAG, "TransactionHandlerProxy.handleLaunchActivity CRASH: originalHandler.handleLaunchActivity threw exception!", t);
+            throw t;
+        }
     }
 
     @Override

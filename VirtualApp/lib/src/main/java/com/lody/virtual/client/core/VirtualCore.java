@@ -43,6 +43,7 @@ import com.lody.virtual.client.ipc.VPackageManager;
 import com.lody.virtual.client.stub.VASettings;
 import com.lody.virtual.helper.compat.BundleCompat;
 import com.lody.virtual.helper.utils.BitmapUtils;
+import com.lody.virtual.helper.utils.VLog;
 import com.lody.virtual.os.VUserHandle;
 import com.lody.virtual.remote.InstallResult;
 import com.lody.virtual.remote.InstalledAppInfo;
@@ -64,6 +65,8 @@ import mirror.android.app.ActivityThread;
  * @version 3.5
  */
 public final class VirtualCore {
+
+    private static final String TAG = "VirtualCore";
 
     public static final int GET_HIDDEN_APP = 0x00000001;
 
@@ -339,7 +342,6 @@ public final class VirtualCore {
      * @param pkg package name
      * @throws IOException
      */
-    @Deprecated
     public void preOpt(String pkg) throws IOException {
         /*
         InstalledAppInfo info = getInstalledAppInfo(pkg, 0);
@@ -408,6 +410,10 @@ public final class VirtualCore {
     }
 
     public boolean isXposedEnabled() {
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.Q) {
+            // Epic ART hook engine only supports Android 5.0 - 10 (API 21 - 29). On Android 11+ (API 30+), it triggers native SIGSEGV in libart.so.
+            return false;
+        }
         return !VirtualCore.get().getContext().getFileStreamPath(".disable_xposed").exists();
     }
 
@@ -426,6 +432,7 @@ public final class VirtualCore {
     }
 
     public Intent getLaunchIntent(String packageName, int userId) {
+        VLog.i(TAG, "VirtualCore.getLaunchIntent: resolving launch intent for pkg=" + packageName + ", userId=" + userId);
         VPackageManager pm = VPackageManager.get();
         Intent intentToResolve = new Intent(Intent.ACTION_MAIN);
         intentToResolve.addCategory(Intent.CATEGORY_INFO);
@@ -441,6 +448,7 @@ public final class VirtualCore {
             ris = pm.queryIntentActivities(intentToResolve, intentToResolve.resolveType(context), 0, userId);
         }
         if (ris == null || ris.size() <= 0) {
+            VLog.w(TAG, "VirtualCore.getLaunchIntent: no ResolveInfo found for pkg=" + packageName + ", userId=" + userId);
             return null;
         }
 
@@ -461,6 +469,7 @@ public final class VirtualCore {
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         intent.setClassName(activityInfo.packageName,
                 activityInfo.name);
+        VLog.i(TAG, "VirtualCore.getLaunchIntent: found intent=" + intent + " (target=" + activityInfo.name + ") for pkg=" + packageName);
         return intent;
     }
 
@@ -745,6 +754,7 @@ public final class VirtualCore {
                 intent.setComponent(componentName);
             }
         }
+        VLog.i(TAG, "VirtualCore.resolveActivityInfo: intent=" + intent + ", userId=" + userId + " => resolved=" + (activityInfo != null ? activityInfo.name : "null"));
         return activityInfo;
     }
 

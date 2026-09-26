@@ -1,16 +1,13 @@
 package io.virtualapp.gms;
 
 import android.app.Activity;
-import android.app.AlertDialog;
-import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
-//import android.support.v7.app.AlertDialog;
 import android.text.TextUtils;
 import android.util.Log;
 
-//import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AlertDialog;
 
 import com.lody.virtual.client.core.InstallStrategy;
 import com.lody.virtual.client.core.VirtualCore;
@@ -38,8 +35,7 @@ import okhttp3.Response;
 import okhttp3.ResponseBody;
 
 /**
- * @author weishu
- * @date 2018/6/9.
+ * Modernized FakeGms installer avoiding deprecated ProgressDialog
  */
 public class FakeGms {
 
@@ -52,27 +48,26 @@ public class FakeGms {
     private static final String STORE_PKG = "com.android.vending";
     private static final String FAKE_GAPPS_PKG = "com.thermatk.android.xf.fakegapps";
 
-    private static ExecutorService executorService = Executors.newSingleThreadExecutor();
+    private static final ExecutorService executorService = Executors.newSingleThreadExecutor();
 
     public static void uninstallGms(Activity activity) {
         if (activity == null) {
             return;
         }
 
-        //Theme_AppCompat_DayNight_Dialog_Alert => R.style.ThemeOverlay_AppCompat_Dark（或改用 Theme.MaterialComponents.Dialog.Alert）
         AlertDialog failDialog = new AlertDialog.Builder(activity, R.style.VAAlertTheme)
                 .setTitle(R.string.uninstall_gms_title)
                 .setMessage(R.string.uninstall_gms_content)
                 .setPositiveButton(R.string.uninstall_gms_ok, ((dialog1, which1) -> {
-                    ProgressDialog dialog = new ProgressDialog(activity);
-                    dialog.show();
+                    AlertDialog progressDialog = DialogUtil.createProgressDialog(activity, activity.getString(R.string.preparing));
+                    DialogUtil.showDialog(progressDialog);
                     VUiKit.defer().when(() -> {
                         VirtualCore.get().uninstallPackage(GMS_PKG);
                         VirtualCore.get().uninstallPackage(GSF_PKG);
                         VirtualCore.get().uninstallPackage(STORE_PKG);
                         VirtualCore.get().uninstallPackage(FAKE_GAPPS_PKG);
                     }).then((v) -> {
-                        dialog.dismiss();
+                        DialogUtil.dismissDialog(progressDialog);
                         AlertDialog hits = new AlertDialog.Builder(activity, R.style.VAAlertTheme)
                                 .setTitle(R.string.uninstall_gms_title)
                                 .setMessage(R.string.uninstall_gms_success)
@@ -81,7 +76,7 @@ public class FakeGms {
                         DialogUtil.showDialog(hits);
 
                     }).fail((v) -> {
-                        dialog.dismiss();
+                        DialogUtil.dismissDialog(progressDialog);
                     });
 
                 }))
@@ -112,7 +107,6 @@ public class FakeGms {
     }
 
     public static void installGms(Activity activity) {
-
         if (activity == null) {
             return;
         }
@@ -121,20 +115,13 @@ public class FakeGms {
                 .setTitle(R.string.install_gms_title)
                 .setMessage(R.string.install_gms_content)
                 .setPositiveButton(android.R.string.ok, ((dialog, which) -> {
-                    // show a loading dialog and start install gms.
-
-                    ProgressDialog progressDialog = new ProgressDialog(activity);
-                    progressDialog.setCancelable(false);
-                    progressDialog.show();
+                    AlertDialog progressDialog = DialogUtil.createProgressDialog(activity, "Fetching GMS config...");
+                    DialogUtil.showDialog(progressDialog);
 
                     executorService.submit(() -> {
                         String failMsg = installGmsInternal(activity, progressDialog);
                         Log.i(TAG, "install gms result: " + failMsg);
-                        try {
-                            progressDialog.dismiss();
-                        } catch (Throwable e) {
-                            e.printStackTrace();
-                        }
+                        DialogUtil.dismissDialog(progressDialog);
 
                         if (failMsg == null) {
                             activity.runOnUiThread(() -> {
@@ -174,10 +161,9 @@ public class FakeGms {
     }
 
 
-    private static String installGmsInternal(Activity activity, ProgressDialog dialog) {
+    private static String installGmsInternal(Activity activity, AlertDialog dialog) {
         File cacheDir = activity.getCacheDir();
 
-        // 下载配置文件，得到各自的URL
         OkHttpClient client = new OkHttpClient.Builder()
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
@@ -188,7 +174,6 @@ public class FakeGms {
                 .url(GMS_CONFIG_URL)
                 .build();
 
-        updateMessage(activity, dialog, "Fetching gms config...");
         Response response;
         try {
             response = client.newCall(request).execute();
@@ -200,148 +185,85 @@ public class FakeGms {
             return "Download gms config failed, please check your network, error: 1";
         }
 
-        Log.i(TAG, "response success: " + response.code());
-        if (200 != response.code()) {
+        ResponseBody body = response.body();
+        if (body == null) {
             return "Download gms config failed, please check your network, error: 2";
         }
 
-        updateMessage(activity, dialog, "Parsing gms config...");
-        ResponseBody body = response.body();
-        if (body == null) {
-            return "Download gms config failed, please check your network, error: 3";
-        }
-
-        String string = null;
-        try {
-            string = body.string();
-        } catch (IOException e) {
-            return "Download gms config failed, please check your network, error: 4";
-        }
-
-        JSONObject jsonObject = null;
-        try {
-            jsonObject = new JSONObject(string);
-        } catch (JSONException e) {
-            return "Download gms config failed, please check your network, error: 5";
-        }
-        String gmsCoreUrl = null;
-        try {
-            gmsCoreUrl = jsonObject.getString("gms");
-        } catch (JSONException e) {
-            return "Download gms config failed, please check your network, error: 6";
-        }
-        String gmsServiceUrl = null;
-        try {
-            gmsServiceUrl = jsonObject.getString("gsf");
-        } catch (JSONException e) {
-            return "Download gms config failed, please check your network, error: 7";
-        }
+        String gmsUrl = null;
+        String gsfUrl = null;
         String storeUrl = null;
-        try {
-            storeUrl = jsonObject.getString("store");
-        } catch (JSONException e) {
-            return "Download gms config failed, please check your network, error: 8";
-        }
         String fakeGappsUrl = null;
+
         try {
-            fakeGappsUrl = jsonObject.getString("fakegapps");
-        } catch (JSONException e) {
-            return "Download gms config failed, please check your network, error: 9";
+            String configContent = body.string();
+            JSONObject jsonObject = new JSONObject(configContent);
+            gmsUrl = jsonObject.optString(GMS_PKG);
+            gsfUrl = jsonObject.optString(GSF_PKG);
+            storeUrl = jsonObject.optString(STORE_PKG);
+            fakeGappsUrl = jsonObject.optString(FAKE_GAPPS_PKG);
+        } catch (IOException | JSONException e) {
+            return "parse gms config failed, please check your network, error: 3";
         }
 
-        String yalpStoreUrl = null;
-        try {
-            yalpStoreUrl = jsonObject.getString("yalp");
-        } catch (JSONException e) {
-            // ignore.
-            Log.i(TAG, "Download gms config failed, please check your network");
+        if (TextUtils.isEmpty(gmsUrl) || TextUtils.isEmpty(gsfUrl) || TextUtils.isEmpty(storeUrl) || TextUtils.isEmpty(fakeGappsUrl)) {
+            return "invalid gms config, please check your network, error: 4";
         }
 
-        updateMessage(activity, dialog, "config parse success!");
-
-        File gmsCoreFile = new File(cacheDir, "gms.apk");
-        File gmsServiceFile = new File(cacheDir, "gsf.apk");
-        File storeFile = new File(cacheDir, "store.apk");
-        File fakeGappsFile = new File(cacheDir, "fakegapps.apk");
-        File yalpStoreFile = new File(cacheDir, "yalpStore.apk");
-
-        // clear old files.
-        if (gmsCoreFile.exists()) {
-            gmsCoreFile.delete();
-        }
-        if (gmsServiceFile.exists()) {
-            gmsServiceFile.delete();
-        }
-        if (storeFile.exists()) {
-            storeFile.delete();
-        }
-        if (fakeGappsFile.exists()) {
-            fakeGappsFile.delete();
+        // 1. download GSF
+        File gsfFile = new File(cacheDir, "gsf.apk");
+        boolean downloadGsf = downloadFile(gsfUrl, gsfFile, null);
+        if (!downloadGsf) {
+            return "Download Google Services Framework failed, error: 5";
         }
 
-        boolean downloadResult = downloadFile(gmsCoreUrl, gmsCoreFile,
-                (progress) -> updateMessage(activity, dialog, "download gms core..." + progress + "%"));
-        if (!downloadResult) {
-            return "Download gms config failed, please check your network, error: 10";
+        // 2. download GMS
+        File gmsFile = new File(cacheDir, "gms.apk");
+        boolean downloadGms = downloadFile(gmsUrl, gmsFile, null);
+        if (!downloadGms) {
+            return "Download Google Play Services failed, error: 6";
         }
 
-        downloadResult = downloadFile(gmsServiceUrl, gmsServiceFile,
-                (progress -> updateMessage(activity, dialog, "download gms service framework proxy.." + progress + "%")));
-
-        if (!downloadResult) {
-            return "Download gms config failed, please check your network, error: 11";
+        // 3. download Vending
+        File storeFile = new File(cacheDir, "vending.apk");
+        boolean downloadVending = downloadFile(storeUrl, storeFile, null);
+        if (!downloadVending) {
+            return "Download Google Play Store failed, error: 7";
         }
 
-        updateMessage(activity, dialog, "download gms store...");
-
-        downloadResult = downloadFile(storeUrl, storeFile,
-                (progress -> updateMessage(activity, dialog, "download gms store.." + progress + "%")));
-        if (!downloadResult) {
-            return "Download gms config failed, please check your network, error: 12";
+        // 4. download FakeGapps
+        File fakeGapps = new File(cacheDir, "fakeGapps.apk");
+        boolean downloadFakeGapps = downloadFile(fakeGappsUrl, fakeGapps, null);
+        if (!downloadFakeGapps) {
+            return "Download FakeGapps failed, error: 8";
         }
 
-        downloadResult = downloadFile(fakeGappsUrl, fakeGappsFile,
-                (progress -> updateMessage(activity, dialog, "download gms Xposed module.." + progress + "%")));
-        if (!downloadResult) {
-            return "Download gms config failed, please check your network, error: 13";
+        // 5. Install all of them!
+        InstallResult gsfResult = VirtualCore.get().installPackage(gsfFile.getAbsolutePath(), InstallStrategy.UPDATE_IF_EXIST);
+        if (!gsfResult.isSuccess) {
+            return "Install Google Service Framework failed: " + gsfResult.error;
         }
+        gsfFile.delete();
 
-        if (yalpStoreUrl != null) {
-            downloadFile(yalpStoreUrl,yalpStoreFile,
-                    (progress -> updateMessage(activity, dialog, "download yalp store.." + progress + "%")));
+        InstallResult gmsResult = VirtualCore.get().installPackage(gmsFile.getAbsolutePath(), InstallStrategy.UPDATE_IF_EXIST);
+        if (!gmsResult.isSuccess) {
+            return "Install Google Play Service failed: " + gmsResult.error;
         }
+        gmsFile.delete();
 
-        updateMessage(activity, dialog, "installing gms core");
-        InstallResult installResult = VirtualCore.get().installPackage(gmsCoreFile.getAbsolutePath(), InstallStrategy.UPDATE_IF_EXIST);
-
-        if (!installResult.isSuccess) {
-            return "install gms core failed: " + installResult.error;
+        InstallResult vendingResult = VirtualCore.get().installPackage(storeFile.getAbsolutePath(), InstallStrategy.UPDATE_IF_EXIST);
+        if (!vendingResult.isSuccess) {
+            return "Install Google Play Store failed: " + vendingResult.error;
         }
+        storeFile.delete();
 
-        updateMessage(activity, dialog, "installing gms service framework...");
-        installResult = VirtualCore.get().installPackage(gmsServiceFile.getAbsolutePath(), InstallStrategy.UPDATE_IF_EXIST);
-        if (!installResult.isSuccess) {
-            return "install gms service framework failed: " + installResult.error;
+        InstallResult fakeGappsResult = VirtualCore.get().installPackage(fakeGapps.getAbsolutePath(), InstallStrategy.UPDATE_IF_EXIST);
+        if (!fakeGappsResult.isSuccess) {
+            return "Install FakeGapps failed: " + fakeGappsResult.error;
         }
+        fakeGapps.delete();
 
-        updateMessage(activity, dialog, "installing gms store...");
-        installResult = VirtualCore.get().installPackage(storeFile.getAbsolutePath(), InstallStrategy.UPDATE_IF_EXIST);
-        if (!installResult.isSuccess) {
-            return "install gms store failed: " + installResult.error;
-        }
-
-        updateMessage(activity, dialog, "installing gms Xposed module...");
-        installResult = VirtualCore.get().installPackage(fakeGappsFile.getAbsolutePath(), InstallStrategy.UPDATE_IF_EXIST);
-        if (!installResult.isSuccess) {
-            return "install gms xposed module failed: " + installResult.error;
-        }
-
-        if (yalpStoreFile.exists()) {
-            updateMessage(activity, dialog, "installing yalp store...");
-            VirtualCore.get().installPackage(yalpStoreFile.getAbsolutePath(), InstallStrategy.UPDATE_IF_EXIST);
-        }
-
-        // Enable the Xposed module.
+        // 6. Enable FakeGapps
         File dataDir = VEnvironment.getDataUserPackageDirectory(0, "de.robv.android.xposed.installer");
         File modulePath = VEnvironment.getPackageResourcePath(FAKE_GAPPS_PKG);
         File configDir = new File(dataDir, "exposed_conf" + File.separator + "modules.list");
@@ -350,7 +272,6 @@ public class FakeGms {
             writer = new FileWriter(configDir, true);
             writer.append(modulePath.getAbsolutePath());
             writer.flush();
-
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
@@ -362,18 +283,7 @@ public class FakeGms {
                 }
             }
         }
-        // success!!!
         return null;
-    }
-
-    private static void updateMessage(Activity activity, ProgressDialog dialog, String msg) {
-        if (activity == null || dialog == null || TextUtils.isEmpty(msg)) {
-            return;
-        }
-        Log.i(TAG, "update dialog message: " + msg);
-        activity.runOnUiThread(() -> {
-            dialog.setMessage(msg);
-        });
     }
 
     public interface DownloadListener {
@@ -403,9 +313,11 @@ public class FakeGms {
             while ((count = inputStream.read(buffer)) >= 0) {
                 fos.write(buffer, 0, count);
                 sum += count;
-                int progress = (int) ((sum * 1.0) / toal * 100);
-                if (listener != null) {
-                    listener.onProgress(progress);
+                if (toal > 0) {
+                    int progress = (int) ((sum * 1.0) / toal * 100);
+                    if (listener != null) {
+                        listener.onProgress(progress);
+                    }
                 }
             }
             fos.flush();
@@ -421,6 +333,5 @@ public class FakeGms {
                 }
             }
         }
-
     }
 }

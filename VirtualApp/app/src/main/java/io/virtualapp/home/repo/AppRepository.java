@@ -164,9 +164,26 @@ public class AppRepository implements AppDataSource {
         PackageManager pm = context.getPackageManager();
         List<AppInfo> list = new ArrayList<>(pkgList.size());
         String hostPkg = VirtualCore.get().getHostPkg();
+
+        java.util.Map<String, InstalledAppInfo> installedMap = new java.util.HashMap<>();
+        try {
+            List<InstalledAppInfo> installedList = VirtualCore.get().getInstalledApps(0);
+            if (installedList != null) {
+                for (InstalledAppInfo installed : installedList) {
+                    if (installed != null && installed.packageName != null) {
+                        installedMap.put(installed.packageName, installed);
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+
         for (PackageInfo pkg : pkgList) {
+            if (pkg == null || pkg.applicationInfo == null) {
+                continue;
+            }
             // ignore the host package
-            if (hostPkg.equals(pkg.packageName)) {
+            if (hostPkg != null && hostPkg.equals(pkg.packageName)) {
                 continue;
             }
 
@@ -184,7 +201,9 @@ public class AppRepository implements AppDataSource {
             boolean splitApk = false;
             if (ai.splitPublicSourceDirs != null || ai.splitSourceDirs != null) {
                 splitApk = true;
-                path = new File(path).getParent();
+                if (path != null) {
+                    path = new File(path).getParent();
+                }
             }
 
             if (path == null) {
@@ -195,11 +214,17 @@ public class AppRepository implements AppDataSource {
             info.fastOpen = fastOpen;
             info.path = path;
             info.icon = null;  // Use Glide to load the icon async
-            info.name = ai.loadLabel(pm);
-            info.version = pkg.versionName;
+            try {
+                CharSequence label = ai.loadLabel(pm);
+                info.name = label != null ? label : pkg.packageName;
+            } catch (Throwable t) {
+                info.name = pkg.packageName;
+            }
+            info.version = pkg.versionName != null ? pkg.versionName : "";
             info.splitApk = splitApk;
-            InstalledAppInfo installedAppInfo = VirtualCore.get().getInstalledAppInfo(pkg.packageName, 0);
-            if (installedAppInfo != null) {
+
+            InstalledAppInfo installedAppInfo = installedMap.get(pkg.packageName);
+            if (installedAppInfo != null && installedAppInfo.getInstalledUsers() != null) {
                 info.cloneCount = installedAppInfo.getInstalledUsers().length;
             }
             if (ai.metaData != null && ai.metaData.containsKey("xposedmodule")) {
@@ -208,12 +233,20 @@ public class AppRepository implements AppDataSource {
             }
             list.add(info);
         }
-        // sort by name
+        // sort by name safely
         Collections.sort(list, (o1, o2) -> {
-            HanziToPinyin hanziToPinyin = HanziToPinyin.getInstance();
-            String pinyin1 = hanziToPinyin.toPinyinString(o1.name.toString().trim());
-            String pinyin2 = hanziToPinyin.toPinyinString(o2.name.toString().trim());
-            return pinyin1.compareTo(pinyin2);
+            try {
+                String name1 = o1.name != null ? o1.name.toString().trim() : "";
+                String name2 = o2.name != null ? o2.name.toString().trim() : "";
+                HanziToPinyin hanziToPinyin = HanziToPinyin.getInstance();
+                String pinyin1 = hanziToPinyin != null ? hanziToPinyin.toPinyinString(name1) : name1;
+                String pinyin2 = hanziToPinyin != null ? hanziToPinyin.toPinyinString(name2) : name2;
+                if (pinyin1 == null) pinyin1 = name1;
+                if (pinyin2 == null) pinyin2 = name2;
+                return pinyin1.compareToIgnoreCase(pinyin2);
+            } catch (Throwable t) {
+                return 0;
+            }
         });
         return list;
     }

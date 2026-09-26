@@ -42,7 +42,7 @@
 
 
 typedef uint32_t *__restrict *__restrict instruction;
-typedef struct
+struct context
 {
     struct fix_info
     {
@@ -97,7 +97,7 @@ public:
             f.bp = NULL;
         }
     }
-} context;
+};
 
 //-------------------------------------------------------------------------
 

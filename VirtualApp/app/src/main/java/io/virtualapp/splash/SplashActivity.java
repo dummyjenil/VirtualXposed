@@ -1,7 +1,9 @@
 package io.virtualapp.splash;
 
 import android.os.Bundle;
-import android.view.WindowManager;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 
 import com.lody.virtual.client.core.VirtualCore;
 
@@ -17,10 +19,12 @@ public class SplashActivity extends VActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        @SuppressWarnings("unused")
-        boolean enterGuide = !Once.beenDone(Once.THIS_APP_INSTALL, VCommends.TAG_NEW_VERSION);
-        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+        WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
+        if (controller != null) {
+            controller.hide(WindowInsetsCompat.Type.systemBars());
+            controller.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+        }
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_splash);
         VUiKit.defer().when(() -> {

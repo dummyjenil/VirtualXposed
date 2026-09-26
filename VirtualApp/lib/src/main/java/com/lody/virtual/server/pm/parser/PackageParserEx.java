@@ -566,7 +566,7 @@ public class PackageParserEx {
     }
 
     private static boolean checkUseInstalledOrHidden(PackageUserState state, int flags) {
-        //noinspection deprecation
+        //noinspection unchecked
         return (state.installed && !state.hidden)
                 || (flags & PackageManager.GET_UNINSTALLED_PACKAGES) != 0;
     }

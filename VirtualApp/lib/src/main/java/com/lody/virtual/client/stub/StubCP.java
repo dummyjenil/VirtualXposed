@@ -26,6 +26,7 @@ public class StubCP extends ContentProvider {
 
 	@Override
 	public Bundle call(String method, String arg, Bundle extras) {
+		com.lody.virtual.helper.utils.VLog.i("StubCP", "StubCP.call: method=" + method + ", pid=" + Process.myPid());
 		if ("_VA_|_init_process_".equals(method)) {
 			return initProcess(extras);
 		}
@@ -35,15 +36,21 @@ public class StubCP extends ContentProvider {
 	private Bundle initProcess(Bundle extras) {
 		ConditionVariable lock = VirtualCore.get().getInitLock();
 		if (lock != null) {
+			com.lody.virtual.helper.utils.VLog.i("StubCP", "StubCP.initProcess: waiting for InitLock...");
 			lock.block();
+			com.lody.virtual.helper.utils.VLog.i("StubCP", "StubCP.initProcess: InitLock released.");
 		}
 		IBinder token = BundleCompat.getBinder(extras,"_VA_|_binder_");
 		int vuid = extras.getInt("_VA_|_vuid_");
+		String proc = extras.getString("_VA_|_process_");
+		String pkg = extras.getString("_VA_|_pkg_");
+		com.lody.virtual.helper.utils.VLog.i("StubCP", "StubCP.initProcess: proc=" + proc + ", pkg=" + pkg + ", vuid=" + vuid + ", token=" + token + ", myPid=" + Process.myPid());
 		VClientImpl client = VClientImpl.get();
 		client.initProcess(token, vuid);
 		Bundle res = new Bundle();
 		BundleCompat.putBinder(res, "_VA_|_client_", client.asBinder());
 		res.putInt("_VA_|_pid_", Process.myPid());
+		com.lody.virtual.helper.utils.VLog.i("StubCP", "StubCP.initProcess: completed successfully, returning client binder and pid=" + Process.myPid());
 		return res;
 	}
 

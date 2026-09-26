@@ -1,7 +1,6 @@
 package io.virtualapp.home;
 
 import android.app.ActivityManager;
-import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
@@ -11,11 +10,10 @@ import android.os.Bundle;
 import android.os.RemoteException;
 import android.os.SystemClock;
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-//import androidx.fragment.app.ActivityCompat;
-//import android.support.v4.content.ContextCompat;
-//import android.support.v7.app.AlertDialog;
+import androidx.core.content.IntentCompat;
 import android.text.TextUtils;
 import android.util.Log;
 import android.widget.ImageView;
@@ -61,8 +59,10 @@ public class LoadingActivity extends VActivity {
     private long start;
 
     public static boolean launch(Context context, String packageName, int userId) {
+        VLog.i(TAG, "LoadingActivity.launch requested for pkg=" + packageName + ", userId=" + userId);
         Intent intent = VirtualCore.get().getLaunchIntent(packageName, userId);
         if (intent != null) {
+            VLog.i(TAG, "LoadingActivity.launch resolved intent=" + intent + " for pkg=" + packageName);
             Intent loadingPageIntent = new Intent(context, LoadingActivity.class);
             loadingPageIntent.putExtra(Constants.PASS_PKG_NAME_ARGUMENT, packageName);
             loadingPageIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -71,6 +71,7 @@ public class LoadingActivity extends VActivity {
             context.startActivity(loadingPageIntent);
             return true;
         } else {
+            VLog.e(TAG, "LoadingActivity.launch failed: VirtualCore.getLaunchIntent returned null for pkg=" + packageName + ", userId=" + userId);
             return false;
         }
     }
@@ -85,8 +86,10 @@ public class LoadingActivity extends VActivity {
         loadingView = (EatBeansView) findViewById(R.id.loading_anim);
         int userId = getIntent().getIntExtra(Constants.PASS_KEY_USER, -1);
         String pkg = getIntent().getStringExtra(Constants.PASS_PKG_NAME_ARGUMENT);
+        VLog.i(TAG, "LoadingActivity.onCreate: pkg=" + pkg + ", userId=" + userId);
         appModel = PackageAppDataStorage.get().acquire(pkg);
         if (appModel == null) {
+            VLog.e(TAG, "LoadingActivity.onCreate: PackageAppDataStorage.get().acquire returned null for " + pkg);
             Toast.makeText(getApplicationContext(), "Open App:" + pkg + " failed.", Toast.LENGTH_SHORT).show();
             finish();
             return;
@@ -96,8 +99,9 @@ public class LoadingActivity extends VActivity {
         iconView.setImageDrawable(appModel.icon);
         TextView nameView = (TextView) findViewById(R.id.app_name);
         nameView.setText(String.format(Locale.ENGLISH, "Opening %s...", appModel.name));
-        Intent intent = getIntent().getParcelableExtra(Constants.PASS_KEY_INTENT);
+        Intent intent = IntentCompat.getParcelableExtra(getIntent(), Constants.PASS_KEY_INTENT, Intent.class);
         if (intent == null) {
+            VLog.e(TAG, "LoadingActivity.onCreate: intent in extras is null for " + pkg);
             finish();
             return;
         }
@@ -118,16 +122,26 @@ public class LoadingActivity extends VActivity {
                 }
             }
 
-            VLog.i(TAG, pkg + "is running: " + uiRunning);
+            VLog.i(TAG, pkg + " is running: " + uiRunning);
             if (uiRunning) {
+                VLog.i(TAG, "App already running, launching directly without permission checks.");
                 launchActivity(intent, userId);
                 return;
             }
         } catch (Throwable ignored) {
-            ignored.printStackTrace();
+            VLog.w(TAG, "Error checking if app process is running:", ignored);
         }
 
         checkAndLaunch(intent, userId);
+
+        // Safety watchdog: If the target app doesn't trigger onAppOpened or onOpenFailed in 10s, log error and finish
+        loadingView.postDelayed(() -> {
+            if (!isFinishing()) {
+                VLog.e(TAG, "LoadingActivity TIMEOUT: App launch did not complete within 10 seconds for pkg=" + pkg + ", finishing LoadingActivity.");
+                Toast.makeText(getApplicationContext(), "App launch timed out: " + (appModel != null ? appModel.name : pkg), Toast.LENGTH_LONG).show();
+                finish();
+            }
+        }, 10000);
     }
 
     private void checkAndLaunch(Intent intent, int userId) {
@@ -220,10 +234,12 @@ public class LoadingActivity extends VActivity {
     }
 
     private void launchActivity(Intent intent, int userId) {
+        VLog.i(TAG, "LoadingActivity.launchActivity: invoking VActivityManager.get().startActivity(intent=" + intent + ", userId=" + userId + ")");
         try {
-            VActivityManager.get().startActivity(intent, userId);
+            int result = VActivityManager.get().startActivity(intent, userId);
+            VLog.i(TAG, "LoadingActivity.launchActivity: VActivityManager.startActivity returned " + result);
         } catch (Throwable e) {
-            VLog.e(TAG, "start activity failed:", e);
+            VLog.e(TAG, "LoadingActivity.launchActivity: start activity failed:", e);
             Toast.makeText(getApplicationContext(), getResources().getString(R.string.start_app_failed, appModel.name), Toast.LENGTH_SHORT).show();
             finish();
         }
@@ -282,11 +298,13 @@ public class LoadingActivity extends VActivity {
 
         @Override
         public void onAppOpened(String packageName, int userId) throws RemoteException {
+            VLog.i(TAG, "mUiCallback.onAppOpened: successfully opened packageName=" + packageName + ", userId=" + userId);
             finish();
         }
 
         @Override
         public void onOpenFailed(String packageName, int userId) throws RemoteException {
+            VLog.e(TAG, "mUiCallback.onOpenFailed: OPEN FAILED for packageName=" + packageName + ", userId=" + userId);
             VUiKit.defer().when(() -> {
             }).done((v) -> {
                 if (!isFinishing()) {

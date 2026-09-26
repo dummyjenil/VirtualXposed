@@ -34,11 +34,13 @@ public class ListAppActivity extends VActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_clone_app);
         mToolBar = findViewById(R.id.clone_app_tool_bar);
-        mTabLayout = mToolBar.findViewById(R.id.clone_app_tab_layout);
+        if (mToolBar != null) {
+            setSupportActionBar(mToolBar);
+        }
+        mTabLayout = findViewById(R.id.clone_app_tab_layout);
         mViewPager = findViewById(R.id.clone_app_view_pager);
         mViewPager.setAdapter(new AppPagerAdapter(getSupportFragmentManager()));
         mTabLayout.setupWithViewPager(mViewPager);
-
     }
 
     @Override

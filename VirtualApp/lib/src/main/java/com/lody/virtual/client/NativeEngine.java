@@ -159,6 +159,12 @@ public class NativeEngine {
         if (sFlag) {
             return;
         }
+        if (Build.VERSION.SDK_INT >= 29) {
+            // Memory offset patching of ArtMethod is incompatible with Android 10+ (API 29+)
+            // and causes SIGSEGV when calling Binder.getCallingUid.
+            sFlag = true;
+            return;
+        }
         Method[] methods = {NativeMethods.gOpenDexFileNative, NativeMethods.gCameraNativeSetup, NativeMethods.gAudioRecordNativeCheckPermission};
         try {
             nativeLaunchEngine(methods, VirtualCore.get().getHostPkg(), VirtualRuntime.isArt(), Build.VERSION.SDK_INT, NativeMethods.gCameraMethodType);

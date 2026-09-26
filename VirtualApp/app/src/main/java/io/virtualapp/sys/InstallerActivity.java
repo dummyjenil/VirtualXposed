@@ -1,13 +1,15 @@
 package io.virtualapp.sys;
 
-import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.IntentCompat;
+import androidx.core.content.pm.PackageInfoCompat;
 
 import android.view.View;
 import android.widget.Button;
@@ -76,18 +78,13 @@ public class InstallerActivity extends AppCompatActivity {
 //    }
 
 
-    @Override
-    public void onBackPressed() {
-        super.onBackPressed();
-    }
-
     private void handleIntent(Intent intent) {
         if (intent == null) {
             finish();
             return;
         }
 
-        ArrayList<AppInfoLite> dataList = intent.getParcelableArrayListExtra(VCommends.EXTRA_APP_INFO_LIST);
+        ArrayList<AppInfoLite> dataList = IntentCompat.getParcelableArrayListExtra(intent, VCommends.EXTRA_APP_INFO_LIST, AppInfoLite.class);
         if (dataList == null) {
             handleSystemIntent(intent);
         } else {
@@ -213,11 +210,11 @@ public class InstallerActivity extends AppCompatActivity {
         try {
             PackageInfo applicationInfo = installedAppInfo.getPackageInfo(0);
             currentVersion = applicationInfo.versionName;
-            currentVersionCode = applicationInfo.versionCode;
+            currentVersionCode = (int) PackageInfoCompat.getLongVersionCode(applicationInfo);
 
             PackageInfo packageArchiveInfo = packageManager.getPackageArchiveInfo(appInfoLite.path, 0);
             toInstalledVersion = packageArchiveInfo.versionName;
-            toInstalledVersionCode = packageArchiveInfo.versionCode;
+            toInstalledVersionCode = (int) PackageInfoCompat.getLongVersionCode(packageArchiveInfo);
 
             String multiVersionUpdate = getResources().getString(currentVersionCode == toInstalledVersionCode ? R.string.multi_version_cover : (
                     currentVersionCode < toInstalledVersionCode ? R.string.multi_version_upgrade : R.string.multi_version_downgrade
@@ -280,7 +277,7 @@ public class InstallerActivity extends AppCompatActivity {
 
         final String packageName = pkgInfo.packageName;
         String toInstalledVersion = pkgInfo.versionName;
-        int toInstalledVersionCode = pkgInfo.versionCode;
+        int toInstalledVersionCode = (int) PackageInfoCompat.getLongVersionCode(pkgInfo);
         CharSequence label = packageName;
 
         if (installedAppInfo != null) {
@@ -293,7 +290,7 @@ public class InstallerActivity extends AppCompatActivity {
                 return;
             }
             currentVersion = applicationInfo.versionName;
-            currentVersionCode = applicationInfo.versionCode;
+            currentVersionCode = (int) PackageInfoCompat.getLongVersionCode(applicationInfo);
 
             label = applicationInfo.applicationInfo.loadLabel(packageManager);
 

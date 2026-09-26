@@ -7,6 +7,7 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.os.Handler;
+import android.os.Looper;
 import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
 import android.util.AttributeSet;
@@ -86,7 +87,7 @@ public class DragSelectRecyclerView extends RecyclerView {
     }
 
     private void init(Context context, AttributeSet attrs) {
-        mAutoScrollHandler = new Handler();
+        mAutoScrollHandler = new Handler(Looper.getMainLooper());
         final int defaultHotspotHeight = context.getResources().getDimensionPixelSize(R.dimen.dsrv_defaultHotspotHeight);
 
         if (attrs != null) {
@@ -163,7 +164,6 @@ public class DragSelectRecyclerView extends RecyclerView {
      * Use {@link #setAdapter(DragSelectRecyclerViewAdapter)} instead.
      */
     @Override
-    @Deprecated
     public void setAdapter(Adapter adapter) {
         if (!(adapter instanceof DragSelectRecyclerViewAdapter<?>))
             throw new IllegalArgumentException("Adapter must be a DragSelectRecyclerViewAdapter.");
@@ -181,7 +181,7 @@ public class DragSelectRecyclerView extends RecyclerView {
         if (v.getTag() == null || !(v.getTag() instanceof ViewHolder))
             throw new IllegalStateException("Make sure your adapter makes a call to super.onBindViewHolder(), and doesn't override itemView tags.");
         final ViewHolder holder = (ViewHolder) v.getTag();
-        return holder.getAdapterPosition();
+        return holder.getBindingAdapterPosition();
     }
 
     public final void enableDebug() {

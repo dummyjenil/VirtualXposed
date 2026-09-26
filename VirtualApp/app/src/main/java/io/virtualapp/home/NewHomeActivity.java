@@ -1,8 +1,6 @@
 package io.virtualapp.home;
 
 import android.app.Activity;
-import android.app.AlertDialog;
-import android.app.ProgressDialog;
 import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
 import android.content.Context;
@@ -14,20 +12,23 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.PowerManager;
 import android.os.SystemClock;
-import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.KeyEvent;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Toast;
 
-import com.android.launcher3.LauncherFiles;
-import com.google.android.apps.nexuslauncher.NexusLauncherActivity;
+import androidx.appcompat.app.AlertDialog;
+import androidx.core.content.ContextCompat;
+
 import com.lody.virtual.client.core.InstallStrategy;
 import com.lody.virtual.client.core.VirtualCore;
 import com.lody.virtual.helper.utils.DeviceUtil;
@@ -46,18 +47,19 @@ import io.virtualapp.R;
 import io.virtualapp.abs.ui.VUiKit;
 import io.virtualapp.settings.SettingsActivity;
 import io.virtualapp.update.VAVersionService;
+import io.virtualapp.utils.DialogUtil;
 import io.virtualapp.utils.Misc;
 import jonathanfinerty.once.Once;
 
 import static io.virtualapp.XApp.XPOSED_INSTALLER_PACKAGE;
 
 /**
- * @author weishu
- * @date 18/2/9.
+ * Modernized Home Activity for VirtualXposed
  */
+public class NewHomeActivity extends ListAppActivity {
 
-public class NewHomeActivity extends NexusLauncherActivity {
-
+    private static final String TAG = "NewHomeActivity";
+    public static final String SHARED_PREFERENCES_KEY = SettingsActivity.SHARED_PREFERENCES_KEY;
     private static final String SHOW_DOZE_ALERT_KEY = "SHOW_DOZE_ALERT_KEY";
     private static final String WALLPAPER_FILE_NAME = "wallpaper.png";
 
@@ -73,14 +75,33 @@ public class NewHomeActivity extends NexusLauncherActivity {
     }
 
     @Override
-    public void onCreate(Bundle savedInstanceState) {
-        SharedPreferences sharedPreferences = getSharedPreferences(LauncherFiles.SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE);
+    protected void onCreate(Bundle savedInstanceState) {
+        SharedPreferences sharedPreferences = getSharedPreferences(SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE);
         super.onCreate(savedInstanceState);
         showMenuKey();
-        mUiHandler = new Handler(getMainLooper());
+        mUiHandler = new Handler(Looper.getMainLooper());
         alertForMeizu();
         alertForDonate();
         mDirectlyBack = sharedPreferences.getBoolean(SettingsActivity.DIRECTLY_BACK_KEY, false);
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.main_menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int id = item.getItemId();
+        if (id == R.id.action_settings || id == 1) {
+            onSettingsClicked();
+            return true;
+        } else if (id == R.id.action_app_manage) {
+            startActivity(new Intent(this, io.virtualapp.settings.AppManageActivity.class));
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     private void installXposed() {
@@ -102,10 +123,8 @@ public class NewHomeActivity extends NexusLauncherActivity {
         }
 
         if (!isXposedInstalled) {
-            ProgressDialog dialog = new ProgressDialog(this);
-            dialog.setCancelable(false);
-            dialog.setMessage(getResources().getString(R.string.prepare_xposed_installer));
-            dialog.show();
+            AlertDialog progressDialog = DialogUtil.createProgressDialog(this, getResources().getString(R.string.prepare_xposed_installer));
+            DialogUtil.showDialog(progressDialog);
 
             VUiKit.defer().when(() -> {
                 File xposedInstallerApk = getFileStreamPath("XposedInstaller_5_8.apk");
@@ -139,21 +158,10 @@ public class NewHomeActivity extends NexusLauncherActivity {
                     }
                 }
             }).then((v) -> {
-                dismissDialog(dialog);
+                DialogUtil.dismissDialog(progressDialog);
             }).fail((err) -> {
-                dismissDialog(dialog);
+                DialogUtil.dismissDialog(progressDialog);
             });
-        }
-    }
-
-    private static void dismissDialog(ProgressDialog dialog) {
-        if (dialog == null) {
-            return;
-        }
-        try {
-            dialog.dismiss();
-        } catch (Throwable e) {
-            e.printStackTrace();
         }
     }
 
@@ -164,7 +172,7 @@ public class NewHomeActivity extends NexusLauncherActivity {
             installXposed();
         }
         // check for update
-        new Handler().postDelayed(() ->
+        new Handler(Looper.getMainLooper()).postDelayed(() ->
                 VAVersionService.checkUpdate(getApplicationContext(), false), 1000);
 
         // check for wallpaper
@@ -188,7 +196,6 @@ public class NewHomeActivity extends NexusLauncherActivity {
         return this;
     }
 
-    @Override
     public void onClickAddWidgetButton(View view) {
         onAddAppClicked();
     }
@@ -201,17 +208,10 @@ public class NewHomeActivity extends NexusLauncherActivity {
         startActivity(new Intent(NewHomeActivity.this, SettingsActivity.class));
     }
 
-    @Override
     public void onClickSettingsButton(View v) {
         onSettingsClicked();
     }
 
-    @Override
-    protected void onClickAllAppsButton(View v) {
-        onSettingsClicked();
-    }
-
-    @Override
     public void startVirtualActivity(Intent intent, Bundle options, int usedId) {
         String packageName = intent.getPackage();
         if (TextUtils.isEmpty(packageName)) {
@@ -246,7 +246,7 @@ public class NewHomeActivity extends NexusLauncherActivity {
         AlertDialog alertDialog = new AlertDialog.Builder(getContext())
                 .setTitle(R.string.about_donate)
                 .setMessage(R.string.donate_dialog_content)
-                .setPositiveButton(android.R.string.yes, (dialog, which) -> {
+                .setPositiveButton(android.R.string.ok, (dialog, which) -> {
                     Misc.showDonate(this);
                     Once.markDone(TAG);
                 })
@@ -269,7 +269,7 @@ public class NewHomeActivity extends NexusLauncherActivity {
             AlertDialog alertDialog = new AlertDialog.Builder(getContext())
                     .setTitle(R.string.meizu_device_tips_title)
                     .setMessage(R.string.meizu_device_tips_content)
-                    .setPositiveButton(android.R.string.yes, (dialog, which) -> {
+                    .setPositiveButton(android.R.string.ok, (dialog, which) -> {
                     })
                     .create();
             try {
@@ -287,7 +287,8 @@ public class NewHomeActivity extends NexusLauncherActivity {
         if (powerManager == null) {
             return;
         }
-        boolean showAlert = PreferenceManager.getDefaultSharedPreferences(this).getBoolean(SHOW_DOZE_ALERT_KEY, true);
+        SharedPreferences prefs = getSharedPreferences("vxp_home_prefs", Context.MODE_PRIVATE);
+        boolean showAlert = prefs.getBoolean(SHOW_DOZE_ALERT_KEY, true);
         if (!showAlert) {
             return;
         }
@@ -307,17 +308,14 @@ public class NewHomeActivity extends NexusLauncherActivity {
                                 try {
                                     startActivity(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS));
                                 } catch (Throwable e) {
-                                    PreferenceManager.getDefaultSharedPreferences(getActivity())
-                                            .edit().putBoolean(SHOW_DOZE_ALERT_KEY, false).apply();
+                                    prefs.edit().putBoolean(SHOW_DOZE_ALERT_KEY, false).apply();
                                 }
                             } catch (Throwable e) {
-                                PreferenceManager.getDefaultSharedPreferences(getActivity())
-                                        .edit().putBoolean(SHOW_DOZE_ALERT_KEY, false).apply();
+                                prefs.edit().putBoolean(SHOW_DOZE_ALERT_KEY, false).apply();
                             }
                         })
                         .setNegativeButton(R.string.alert_for_doze_mode_no, (dialog, which) ->
-                                PreferenceManager.getDefaultSharedPreferences(getActivity())
-                                        .edit().putBoolean(SHOW_DOZE_ALERT_KEY, false).apply())
+                                prefs.edit().putBoolean(SHOW_DOZE_ALERT_KEY, false).apply())
                         .create();
                 try {
                     alertDialog.show();
@@ -331,7 +329,7 @@ public class NewHomeActivity extends NexusLauncherActivity {
     private void setWallpaper() {
         File wallpaper = getFileStreamPath(WALLPAPER_FILE_NAME);
         if (wallpaper == null || !wallpaper.exists() || wallpaper.isDirectory()) {
-            setOurWallpaper(getResources().getDrawable(R.drawable.home_bg));
+            setOurWallpaper(ContextCompat.getDrawable(this, R.drawable.home_bg));
         } else {
             long start = SystemClock.elapsedRealtime();
             Drawable d;
@@ -346,10 +344,16 @@ public class NewHomeActivity extends NexusLauncherActivity {
                 Toast.makeText(getApplicationContext(), R.string.wallpaper_too_big_tips, Toast.LENGTH_SHORT).show();
             }
             if (d == null) {
-                setOurWallpaper(getResources().getDrawable(R.drawable.home_bg));
+                setOurWallpaper(ContextCompat.getDrawable(this, R.drawable.home_bg));
             } else {
                 setOurWallpaper(d);
             }
+        }
+    }
+
+    public void setOurWallpaper(Drawable d) {
+        if (d != null && getWindow() != null) {
+            getWindow().setBackgroundDrawable(d);
         }
     }
 

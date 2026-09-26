@@ -129,6 +129,7 @@ public class VActivityManagerService extends IActivityManager.Stub {
 
     @Override
     public int startActivity(Intent intent, ActivityInfo info, IBinder resultTo, Bundle options, String resultWho, int requestCode, int userId) {
+        VLog.i(TAG, "VAMS.startActivity: intent=" + intent + ", info=" + (info != null ? (info.packageName + "/" + info.name) : "null") + ", userId=" + userId + ", requestCode=" + requestCode);
         synchronized (this) {
             return mMainStack.startActivityLocked(userId, intent, info, resultTo, options, resultWho, requestCode);
         }
@@ -689,8 +690,10 @@ public class VActivityManagerService extends IActivityManager.Stub {
 
 
     private void attachClient(int pid, final IBinder clientBinder) {
+        VLog.i(TAG, "VAMS.attachClient called for pid=" + pid + ", clientBinder=" + clientBinder);
         final IVClient client = IVClient.Stub.asInterface(clientBinder);
         if (client == null) {
+            VLog.e(TAG, "VAMS.attachClient FAILED: IVClient.Stub.asInterface returned null for pid=" + pid + ". Killing process.");
             killProcess(pid);
             return;
         }
@@ -698,9 +701,10 @@ public class VActivityManagerService extends IActivityManager.Stub {
         try {
             thread = ApplicationThreadCompat.asInterface(client.getAppThread());
         } catch (RemoteException e) {
-            // process has dead
+            VLog.e(TAG, "VAMS.attachClient: RemoteException getting appThread for pid=" + pid, e);
         }
         if (thread == null) {
+            VLog.e(TAG, "VAMS.attachClient FAILED: appThread is null for pid=" + pid + ". Killing process.");
             killProcess(pid);
             return;
         }
@@ -709,11 +713,14 @@ public class VActivityManagerService extends IActivityManager.Stub {
             IBinder token = client.getToken();
             if (token instanceof ProcessRecord) {
                 app = (ProcessRecord) token;
+            } else {
+                VLog.w(TAG, "VAMS.attachClient: client.getToken() is not ProcessRecord: " + token);
             }
         } catch (RemoteException e) {
-            // process has dead
+            VLog.e(TAG, "VAMS.attachClient: RemoteException getting token for pid=" + pid, e);
         }
         if (app == null) {
+            VLog.e(TAG, "VAMS.attachClient FAILED: ProcessRecord app is null for pid=" + pid + ". Killing process.");
             killProcess(pid);
             return;
         }
@@ -722,12 +729,13 @@ public class VActivityManagerService extends IActivityManager.Stub {
             clientBinder.linkToDeath(new DeathRecipient() {
                 @Override
                 public void binderDied() {
+                    VLog.w(TAG, "VAMS: client binderDied for process=" + record.processName + ", pid=" + record.pid);
                     clientBinder.unlinkToDeath(this, 0);
                     onProcessDead(record);
                 }
             }, 0);
         } catch (RemoteException e) {
-            e.printStackTrace();
+            VLog.e(TAG, "VAMS.attachClient: linkToDeath failed for pid=" + pid, e);
         }
         app.client = client;
         app.appThread = thread;
@@ -736,9 +744,11 @@ public class VActivityManagerService extends IActivityManager.Stub {
             mProcessNames.put(app.processName, app.vuid, app);
             mPidsSelfLocked.put(app.pid, app);
         }
+        VLog.i(TAG, "VAMS.attachClient SUCCESS for processName=" + app.processName + ", vuid=" + app.vuid + ", pid=" + pid + ", vpid=" + app.vpid);
     }
 
     private void onProcessDead(ProcessRecord record) {
+        VLog.w(TAG, "VAMS.onProcessDead: record=" + record.processName + ", pid=" + record.pid);
         mProcessNames.remove(record.processName, record.vuid);
         mPidsSelfLocked.remove(record.pid);
         processDead(record);
@@ -759,13 +769,16 @@ public class VActivityManagerService extends IActivityManager.Stub {
     }
 
     ProcessRecord startProcessIfNeedLocked(String processName, int userId, String packageName) {
+        VLog.i(TAG, "VAMS.startProcessIfNeedLocked: processName=" + processName + ", userId=" + userId + ", packageName=" + packageName);
         if (VActivityManagerService.get().getFreeStubCount() < 3) {
+            VLog.w(TAG, "VAMS.startProcessIfNeedLocked: low free stubs (" + getFreeStubCount() + "), killing all apps");
             // run GC
             killAllApps();
         }
         PackageSetting ps = PackageCacheManager.getSetting(packageName);
         ApplicationInfo info = VPackageManagerService.get().getApplicationInfo(packageName, 0, userId);
         if (ps == null || info == null) {
+            VLog.e(TAG, "VAMS.startProcessIfNeedLocked FAILED: PackageSetting=" + ps + ", ApplicationInfo=" + info + " for " + packageName);
             return null;
         }
         if (!ps.isLaunched(userId)) {
@@ -775,16 +788,22 @@ public class VActivityManagerService extends IActivityManager.Stub {
         }
         int uid = VUserHandle.getUid(userId, ps.appId);
         ProcessRecord app = mProcessNames.get(processName, uid);
-        if (app != null && app.client.asBinder().pingBinder()) {
+        if (app != null && app.client != null && app.client.asBinder().pingBinder()) {
+            VLog.i(TAG, "VAMS.startProcessIfNeedLocked: reusing existing alive process for " + processName + " (pid=" + app.pid + ")");
             return app;
         }
         int vpid = queryFreeStubProcessLocked();
         if (vpid == -1) {
+            VLog.e(TAG, "VAMS.startProcessIfNeedLocked FAILED: No free stub process available for " + processName);
             return null;
         }
+        VLog.i(TAG, "VAMS.startProcessIfNeedLocked: starting new stub process vpid=" + vpid + " for " + processName);
         app = performStartProcessLocked(uid, vpid, info, processName);
         if (app != null) {
             app.pkgList.add(info.packageName);
+            VLog.i(TAG, "VAMS.startProcessIfNeedLocked SUCCESS: process=" + processName + ", pid=" + app.pid + ", vpid=" + app.vpid);
+        } else {
+            VLog.e(TAG, "VAMS.startProcessIfNeedLocked FAILED: performStartProcessLocked returned null for " + processName);
         }
         return app;
     }
@@ -816,12 +835,16 @@ public class VActivityManagerService extends IActivityManager.Stub {
         extras.putInt("_VA_|_vuid_", vuid);
         extras.putString("_VA_|_process_", processName);
         extras.putString("_VA_|_pkg_", info.packageName);
-        Bundle res = ProviderCall.call(VASettings.getStubAuthority(vpid), "_VA_|_init_process_", null, extras);
+        String auth = VASettings.getStubAuthority(vpid);
+        VLog.i(TAG, "VAMS.performStartProcessLocked: calling ProviderCall for auth=" + auth + " to init process=" + processName);
+        Bundle res = ProviderCall.call(auth, "_VA_|_init_process_", null, extras);
         if (res == null) {
+            VLog.e(TAG, "VAMS.performStartProcessLocked FAILED: ProviderCall.call returned null for auth=" + auth + ", vpid=" + vpid);
             return null;
         }
         int pid = res.getInt("_VA_|_pid_");
         IBinder clientBinder = BundleCompat.getBinder(res, "_VA_|_client_");
+        VLog.i(TAG, "VAMS.performStartProcessLocked: ProviderCall success! target pid=" + pid + ", clientBinder=" + clientBinder);
         attachClient(pid, clientBinder);
         return app;
     }

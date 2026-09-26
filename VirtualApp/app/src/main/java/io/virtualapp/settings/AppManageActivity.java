@@ -2,7 +2,7 @@ package io.virtualapp.settings;
 
 import android.app.AlertDialog;
 import android.app.Dialog;
-import android.app.ProgressDialog;
+import io.virtualapp.utils.DialogUtil;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
@@ -184,8 +184,7 @@ public class AppManageActivity extends VActivity {
     }
 
     private void showRepairDialog(AppManageInfo item) {
-        ProgressDialog dialog = new ProgressDialog(this);
-        dialog.setTitle(getResources().getString(R.string.app_manage_repairing));
+        Dialog dialog = DialogUtil.createProgressDialog(this, getResources().getString(R.string.app_manage_repairing));
         try {
             dialog.setCancelable(false);
             dialog.show();
@@ -247,13 +246,13 @@ public class AppManageActivity extends VActivity {
 
     private void showUninstallDialog(AppManageInfo item, CharSequence name) {
         AlertDialog alertDialog = new AlertDialog.Builder(AppManageActivity.this)
-                .setTitle(com.android.launcher3.R.string.home_menu_delete_title)
-                .setMessage(getResources().getString(com.android.launcher3.R.string.home_menu_delete_content, name))
-                .setPositiveButton(android.R.string.yes, (dialog, which) -> {
+                .setTitle(R.string.home_menu_delete_title)
+                .setMessage(getResources().getString(R.string.home_menu_delete_content, name))
+                .setPositiveButton(android.R.string.ok, (dialog, which) -> {
                     VirtualCore.get().uninstallPackageAsUser(item.pkgName, item.userId);
                     loadAsync();
                 })
-                .setNegativeButton(android.R.string.no, null)
+                .setNegativeButton(android.R.string.cancel, null)
                 .create();
         try {
             alertDialog.show();
@@ -281,7 +280,7 @@ public class AppManageActivity extends VActivity {
                             } catch (Throwable ignored) {
                             }
                         })
-                .setNegativeButton(android.R.string.no, null)
+                .setNegativeButton(android.R.string.cancel, null)
                 .create();
         try {
             alertDialog.show();

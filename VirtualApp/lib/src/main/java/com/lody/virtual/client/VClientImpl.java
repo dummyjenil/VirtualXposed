@@ -181,6 +181,7 @@ public final class VClientImpl extends IVClient.Stub {
     }
 
     public void initProcess(IBinder token, int vuid) {
+        VLog.i(TAG, "VClientImpl.initProcess: token=" + token + ", vuid=" + vuid + ", myPid=" + Process.myPid());
         this.token = token;
         this.vuid = vuid;
     }
@@ -212,11 +213,13 @@ public final class VClientImpl extends IVClient.Stub {
     }
 
     public void bindApplicationForActivity(final String packageName, final String processName, final Intent intent) {
+        VLog.i(TAG, "VClientImpl.bindApplicationForActivity: pkg=" + packageName + ", process=" + processName + ", intent=" + intent);
         mUiCallback = VirtualCore.getUiCallback(intent);
         bindApplication(packageName, processName);
     }
 
     public void bindApplication(final String packageName, final String processName) {
+        VLog.i(TAG, "VClientImpl.bindApplication: pkg=" + packageName + ", process=" + processName + ", isMainThread=" + (Looper.getMainLooper() == Looper.myLooper()));
         if (Looper.getMainLooper() == Looper.myLooper()) {
             bindApplicationNoCheck(packageName, processName, new ConditionVariable());
         } else {
@@ -233,20 +236,23 @@ public final class VClientImpl extends IVClient.Stub {
     }
 
     private void bindApplicationNoCheck(String packageName, String processName, ConditionVariable lock) {
+        VLog.i(TAG, "VClientImpl.bindApplicationNoCheck START: pkg=" + packageName + ", processName=" + processName);
         VDeviceInfo deviceInfo = getDeviceInfo();
         if (processName == null) {
             processName = packageName;
         }
         mTempLock = lock;
         try {
+            VLog.i(TAG, "VClientImpl.bindApplicationNoCheck [1/9]: Setting up uncaught handler...");
             setupUncaughtHandler();
         } catch (Throwable e) {
-            e.printStackTrace();
+            VLog.e(TAG, "VClientImpl.bindApplicationNoCheck: setupUncaughtHandler failed:", e);
         }
         try {
+            VLog.i(TAG, "VClientImpl.bindApplicationNoCheck [2/9]: Fixing installed providers...");
             fixInstalledProviders();
         } catch (Throwable e) {
-            e.printStackTrace();
+            VLog.e(TAG, "VClientImpl.bindApplicationNoCheck: fixInstalledProviders failed:", e);
         }
         mirror.android.os.Build.SERIAL.set(deviceInfo.serial);
         mirror.android.os.Build.DEVICE.set(Build.DEVICE.replace(" ", "_"));
@@ -257,15 +263,19 @@ public final class VClientImpl extends IVClient.Stub {
         AppBindData data = new AppBindData();
         InstalledAppInfo info = VirtualCore.get().getInstalledAppInfo(packageName, 0);
         if (info == null) {
+            VLog.e(TAG, "VClientImpl.bindApplicationNoCheck FATAL: InstalledAppInfo is null for " + packageName);
             new Exception("App not exist!").printStackTrace();
             Process.killProcess(0);
             System.exit(0);
         }
         data.appInfo = VPackageManager.get().getApplicationInfo(packageName, 0, getUserId(vuid));
+        if (data.appInfo == null) {
+            VLog.e(TAG, "VClientImpl.bindApplicationNoCheck FATAL: ApplicationInfo is null from VPackageManager for " + packageName);
+        }
         data.processName = processName;
         data.appInfo.processName = processName;
         data.providers = VPackageManager.get().queryContentProviders(processName, getVUid(), PackageManager.GET_META_DATA);
-        VLog.i(TAG, String.format("Binding application %s, (%s)", data.appInfo.packageName, data.processName));
+        VLog.i(TAG, "VClientImpl.bindApplicationNoCheck [3/9]: Binding application " + data.appInfo.packageName + " (" + data.processName + "), providers count=" + (data.providers != null ? data.providers.size() : 0));
         mBoundApplication = data;
         VirtualRuntime.setupRuntime(data.processName, data.appInfo);
         int targetSdkVersion = data.appInfo.targetSdkVersion;
@@ -277,11 +287,19 @@ public final class VClientImpl extends IVClient.Stub {
             mirror.android.os.Message.updateCheckRecycle.call(targetSdkVersion);
         }
         if (VASettings.ENABLE_IO_REDIRECT) {
+            VLog.i(TAG, "VClientImpl.bindApplicationNoCheck [4/9]: Starting IO uniformer...");
             startIOUniformer();
         }
-        NativeEngine.launchEngine();
+        VLog.i(TAG, "VClientImpl.bindApplicationNoCheck [5/9]: Launching NativeEngine...");
+        try {
+            NativeEngine.launchEngine();
+            VLog.i(TAG, "VClientImpl.bindApplicationNoCheck: NativeEngine launched successfully.");
+        } catch (Throwable t) {
+            VLog.e(TAG, "VClientImpl.bindApplicationNoCheck: NativeEngine.launchEngine failed:", t);
+        }
         Object mainThread = VirtualCore.mainThread();
         NativeEngine.startDexOverride();
+        VLog.i(TAG, "VClientImpl.bindApplicationNoCheck [6/9]: Creating package context for " + data.appInfo.packageName);
         Context context = createPackageContext(data.appInfo.packageName);
         try {
             // anti-virus, fuck ESET-NOD32: a variant of Android/AdDisplay.AdLock.AL potentially unwanted
@@ -335,27 +353,58 @@ public final class VClientImpl extends IVClient.Stub {
 
         boolean enableXposed = VirtualCore.get().isXposedEnabled();
         if (enableXposed) {
-            VLog.i(TAG, "Xposed is enabled.");
-            ClassLoader originClassLoader = context.getClassLoader();
-            ExposedBridge.initOnce(context, data.appInfo, originClassLoader);
-            List<InstalledAppInfo> modules = VirtualCore.get().getInstalledApps(0);
-            for (InstalledAppInfo module : modules) {
-                ExposedBridge.loadModule(module.apkPath, module.getOdexFile().getParent(), module.libPath,
-                        data.appInfo, originClassLoader);
+            VLog.i(TAG, "VClientImpl: Xposed is enabled, initializing ExposedBridge.initOnce...");
+            try {
+                ClassLoader originClassLoader = context.getClassLoader();
+                VLog.i(TAG, "VClientImpl: calling ExposedBridge.initOnce with originClassLoader=" + originClassLoader);
+                ExposedBridge.initOnce(context, data.appInfo, originClassLoader);
+                VLog.i(TAG, "VClientImpl: ExposedBridge.initOnce completed!");
+                List<InstalledAppInfo> modules = VirtualCore.get().getInstalledApps(0);
+                VLog.i(TAG, "VClientImpl: loading " + modules.size() + " installed modules...");
+                for (InstalledAppInfo module : modules) {
+                    VLog.i(TAG, "VClientImpl: loading module " + module.packageName + " from " + module.apkPath);
+                    ExposedBridge.loadModule(module.apkPath, module.getOdexFile().getParent(), module.libPath,
+                            data.appInfo, originClassLoader);
+                }
+                VLog.i(TAG, "VClientImpl: all modules loaded!");
+            } catch (Throwable t) {
+                VLog.e(TAG, "Failed to initialize ExposedBridge: " + t.getMessage(), t);
             }
         } else {
             VLog.w(TAG, "Xposed is disable..");
         }
 
-        ClassLoader cl = LoadedApk.getClassLoader.call(data.info);
-        if (BuildCompat.isS()) {
-            ClassLoader parent = cl.getParent();
-            Reflect.on(cl).set("parent", new DelegateLastClassLoader("/system/framework/android.test.base.jar", parent));
+        VLog.i(TAG, "VClientImpl: calling LoadedApk.getClassLoader...");
+        ClassLoader cl = null;
+        try {
+            cl = LoadedApk.getClassLoader.call(data.info);
+            VLog.i(TAG, "VClientImpl: LoadedApk.getClassLoader returned " + cl);
+        } catch (Throwable t) {
+            VLog.e(TAG, "VClientImpl: LoadedApk.getClassLoader failed:", t);
+        }
+        if (cl != null && BuildCompat.isS()) {
+            VLog.i(TAG, "VClientImpl: Android 12+ (S) detected, fixing DelegateLastClassLoader parent...");
+            try {
+                ClassLoader parent = cl.getParent();
+                Reflect.on(cl).set("parent", new DelegateLastClassLoader("/system/framework/android.test.base.jar", parent));
+                VLog.i(TAG, "VClientImpl: DelegateLastClassLoader fixed!");
+            } catch (Throwable t) {
+                VLog.e(TAG, "VClientImpl: fixing DelegateLastClassLoader failed:", t);
+            }
         }
 
-        if (Build.VERSION.SDK_INT >= 30)
-            ApplicationConfig.setDefaultInstance.call(new Object[] { null });
+        if (Build.VERSION.SDK_INT >= 30) {
+            VLog.i(TAG, "VClientImpl: SDK >= 30, resetting ApplicationConfig...");
+            try {
+                ApplicationConfig.setDefaultInstance.call(new Object[] { null });
+                VLog.i(TAG, "VClientImpl: ApplicationConfig reset completed.");
+            } catch (Throwable t) {
+                VLog.e(TAG, "VClientImpl: ApplicationConfig.setDefaultInstance failed:", t);
+            }
+        }
+        VLog.i(TAG, "VClientImpl.bindApplicationNoCheck [7/9]: LoadedApk.makeApplication...");
         mInitialApplication = LoadedApk.makeApplication.call(data.info, false, null);
+        VLog.i(TAG, "VClientImpl.bindApplicationNoCheck: Application instance created: " + (mInitialApplication != null ? mInitialApplication.getClass().getName() : "null"));
 
         // ExposedBridge.patchAppClassLoader(context);
 
@@ -366,6 +415,7 @@ public final class VClientImpl extends IVClient.Stub {
             fixWeChatRecovery(mInitialApplication);
         }
         if (data.providers != null) {
+            VLog.i(TAG, "VClientImpl.bindApplicationNoCheck [8/9]: Installing content providers...");
             installContentProviders(mInitialApplication, data.providers);
         }
         if (lock != null) {
@@ -374,6 +424,7 @@ public final class VClientImpl extends IVClient.Stub {
         }
         VirtualCore.get().getComponentDelegate().beforeApplicationCreate(mInitialApplication);
         try {
+            VLog.i(TAG, "VClientImpl.bindApplicationNoCheck [9/9]: Calling Application.onCreate via Instrumentation...");
             mInstrumentation.callApplicationOnCreate(mInitialApplication);
             InvocationStubManager.getInstance().checkEnv(HCallbackStub.class);
             if (conflict) {
@@ -383,11 +434,14 @@ public final class VClientImpl extends IVClient.Stub {
             if (createdApp != null) {
                 mInitialApplication = createdApp;
             }
+            VLog.i(TAG, "VClientImpl.bindApplicationNoCheck SUCCESS: Application.onCreate completed for " + packageName);
         } catch (Exception e) {
+            VLog.e(TAG, "VClientImpl.bindApplicationNoCheck CRASH: Application.onCreate threw exception!", e);
             if (!mInstrumentation.onException(mInitialApplication, e)) {
                 // 1. tell ui that do not need wait use now.
                 if (mUiCallback != null) {
                     try {
+                        VLog.w(TAG, "VClientImpl.bindApplicationNoCheck: notifying mUiCallback.onOpenFailed for " + packageName);
                         mUiCallback.onOpenFailed(packageName, VUserHandle.myUserId());
                     } catch (RemoteException ignored) {
                     }
@@ -583,12 +637,18 @@ public final class VClientImpl extends IVClient.Stub {
     private Context createPackageContext(String packageName) {
         try {
             Context hostContext = VirtualCore.get().getContext();
-            return hostContext.createPackageContext(packageName, Context.CONTEXT_INCLUDE_CODE | Context.CONTEXT_IGNORE_SECURITY);
+            Context ctx = hostContext.createPackageContext(packageName, Context.CONTEXT_INCLUDE_CODE | Context.CONTEXT_IGNORE_SECURITY);
+            VLog.i(TAG, "VClientImpl.createPackageContext SUCCESS for pkg=" + packageName + " -> " + ctx);
+            return ctx;
         } catch (PackageManager.NameNotFoundException e) {
+            VLog.e(TAG, "VClientImpl.createPackageContext FAILED: NameNotFoundException for pkg=" + packageName, e);
             e.printStackTrace();
             VirtualRuntime.crash(new RemoteException());
+        } catch (Throwable t) {
+            VLog.e(TAG, "VClientImpl.createPackageContext FAILED: unexpected exception for pkg=" + packageName, t);
+            throw new RuntimeException(t);
         }
-        throw new RuntimeException();
+        throw new RuntimeException("Unable to createPackageContext for " + packageName);
     }
 
     private Object fixBoundApp(AppBindData data) {
@@ -610,8 +670,10 @@ public final class VClientImpl extends IVClient.Stub {
         try {
             for (ProviderInfo cpi : providers) {
                 try {
+                    VLog.i(TAG, "VClientImpl.installContentProviders: installing provider " + cpi.name + " (" + cpi.authority + ")");
                     ActivityThread.installProvider(mainThread, app, cpi, null);
                 } catch (Throwable e) {
+                    VLog.e(TAG, "VClientImpl.installContentProviders FAILED for " + cpi.name, e);
                     e.printStackTrace();
                 }
             }

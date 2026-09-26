@@ -88,6 +88,18 @@ public class VPackage implements Parcelable {
     public VPackage() {
     }
 
+    @SuppressWarnings("unchecked")
+    public static <T extends Parcelable> T readParcelableCompat(Parcel in, Class<T> clazz) {
+        if (in == null || clazz == null) {
+            return null;
+        }
+        if (Build.VERSION.SDK_INT >= 33) {
+            return in.readParcelable(clazz.getClassLoader(), clazz);
+        } else {
+            return in.readParcelable(clazz.getClassLoader());
+        }
+    }
+
     protected VPackage(Parcel in) {
         int N = in.readInt();
         this.activities = new ArrayList<>(N);
@@ -126,7 +138,7 @@ public class VPackage implements Parcelable {
         }
         this.requestedPermissions = in.createStringArrayList();
         this.protectedBroadcasts = in.createStringArrayList();
-        this.applicationInfo = in.readParcelable(ApplicationInfo.class.getClassLoader());
+        this.applicationInfo = readParcelableCompat(in, ApplicationInfo.class);
         this.mAppMetaData = in.readBundle(Bundle.class.getClassLoader());
         this.packageName = in.readString();
         this.mPreferredOrder = in.readInt();
@@ -146,7 +158,7 @@ public class VPackage implements Parcelable {
         this.usesOptionalLibraries = in.createStringArrayList();
 
         if (BuildCompat.isPie()) {
-            this.signingInfo = in.readParcelable(Bundle.class.getClassLoader());
+            this.signingInfo = readParcelableCompat(in, SigningInfo.class);
         }
     }
 
@@ -340,7 +352,7 @@ public class VPackage implements Parcelable {
         }
 
         protected IntentInfo(Parcel in) {
-            this.filter = in.readParcelable(VPackage.class.getClassLoader());
+            this.filter = readParcelableCompat(in, IntentFilter.class);
             this.hasDefault = in.readByte() != 0;
             this.labelRes = in.readInt();
             this.nonLocalizedLabel = in.readString();
@@ -410,7 +422,7 @@ public class VPackage implements Parcelable {
         }
 
         protected ActivityComponent(Parcel src) {
-            info = src.readParcelable(ActivityInfo.class.getClassLoader());
+            info = readParcelableCompat(src, ActivityInfo.class);
             className = src.readString();
             metaData = src.readBundle(Bundle.class.getClassLoader());
             int N = src.readInt();
@@ -436,7 +448,7 @@ public class VPackage implements Parcelable {
         }
 
         protected ServiceComponent(Parcel src) {
-            info = src.readParcelable(ActivityInfo.class.getClassLoader());
+            info = readParcelableCompat(src, ServiceInfo.class);
             className = src.readString();
             metaData = src.readBundle(Bundle.class.getClassLoader());
             int N = src.readInt();
@@ -462,7 +474,7 @@ public class VPackage implements Parcelable {
         }
 
         protected ProviderComponent(Parcel src) {
-            info = src.readParcelable(ActivityInfo.class.getClassLoader());
+            info = readParcelableCompat(src, ProviderInfo.class);
             className = src.readString();
             metaData = src.readBundle(Bundle.class.getClassLoader());
             int N = src.readInt();
@@ -482,7 +494,7 @@ public class VPackage implements Parcelable {
         }
 
         protected InstrumentationComponent(Parcel src) {
-            info = src.readParcelable(ActivityInfo.class.getClassLoader());
+            info = readParcelableCompat(src, InstrumentationInfo.class);
             className = src.readString();
             metaData = src.readBundle(Bundle.class.getClassLoader());
             int N = src.readInt();
@@ -545,7 +557,7 @@ public class VPackage implements Parcelable {
         }
 
         protected PermissionComponent(Parcel src) {
-            info = src.readParcelable(ActivityInfo.class.getClassLoader());
+            info = readParcelableCompat(src, PermissionInfo.class);
             className = src.readString();
             metaData = src.readBundle(Bundle.class.getClassLoader());
             int N = src.readInt();
@@ -566,7 +578,7 @@ public class VPackage implements Parcelable {
         }
 
         protected PermissionGroupComponent(Parcel src) {
-            info = src.readParcelable(ActivityInfo.class.getClassLoader());
+            info = readParcelableCompat(src, PermissionGroupInfo.class);
             className = src.readString();
             metaData = src.readBundle(Bundle.class.getClassLoader());
             int N = src.readInt();

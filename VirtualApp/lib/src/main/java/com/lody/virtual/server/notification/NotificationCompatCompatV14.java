@@ -10,7 +10,6 @@ import com.lody.virtual.client.core.VirtualCore;
 /**
  * @author 247321543
  */
-@SuppressWarnings("deprecation")
 class NotificationCompatCompatV14 extends NotificationCompat {
     private final RemoteViewsFixer mRemoteViewsFixer;
 

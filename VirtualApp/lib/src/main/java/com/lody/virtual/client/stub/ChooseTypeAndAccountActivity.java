@@ -77,7 +77,6 @@ public class ChooseTypeAndAccountActivity extends Activity
      * Deprecated. Providing this extra to {@link ChooseTypeAndAccountActivity}
      * will have no effect.
      */
-    @Deprecated
     public static final String EXTRA_ALWAYS_PROMPT_FOR_ACCOUNT =
             "alwaysPromptForAccount";
 

@@ -1667,7 +1667,7 @@ class MethodProxies {
                             Resources resources = VirtualCore.get().getResources(pkg);
                             int resId = resources.getIdentifier(icon.resourceName, "drawable", pkg);
                             if (resId > 0) {
-                                //noinspection deprecation
+                                //noinspection unchecked
                                 Drawable iconDrawable = resources.getDrawable(resId);
                                 Bitmap newIcon = BitmapUtils.drawableToBitmap(iconDrawable);
                                 if (newIcon != null) {

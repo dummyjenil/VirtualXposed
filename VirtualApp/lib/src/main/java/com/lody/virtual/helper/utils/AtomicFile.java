@@ -184,9 +184,6 @@ public class AtomicFile {
         }
     }
 
-    /**
-     * @deprecated This is not safe.
-     */
     public void truncate() throws IOException {
         try {
             FileOutputStream fos = new FileOutputStream(mBaseName);
@@ -198,10 +195,7 @@ public class AtomicFile {
         }
     }
 
-    /**
-     * @deprecated This is not safe.
-     */
-    @Deprecated public FileOutputStream openAppend() throws IOException {
+    public FileOutputStream openAppend() throws IOException {
         try {
             return new FileOutputStream(mBaseName, true);
         } catch (FileNotFoundException e) {

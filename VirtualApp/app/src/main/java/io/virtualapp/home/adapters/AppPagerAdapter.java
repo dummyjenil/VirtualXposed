@@ -10,6 +10,7 @@ import java.util.List;
 
 import io.virtualapp.R;
 import io.virtualapp.XApp;
+import io.virtualapp.home.InstalledAppFragment;
 import io.virtualapp.home.ListAppFragment;
 
 /**
@@ -17,17 +18,20 @@ import io.virtualapp.home.ListAppFragment;
  */
 public class AppPagerAdapter extends FragmentPagerAdapter {
     private List<String> titles = new ArrayList<>();
-    private List<File> dirs = new ArrayList<>();
 
     public AppPagerAdapter(FragmentManager fm) {
-        super(fm);
+        super(fm, BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT);
+        titles.add("Installed");
         titles.add(XApp.getApp().getResources().getString(R.string.clone_apps));
-        dirs.add(null);
     }
 
     @Override
     public Fragment getItem(int position) {
-        return ListAppFragment.newInstance(dirs.get(position));
+        if (position == 0) {
+            return InstalledAppFragment.newInstance();
+        } else {
+            return ListAppFragment.newInstance(null);
+        }
     }
 
     @Override

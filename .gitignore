@@ -38,6 +38,7 @@ local.properties
 
 # Log Files
 *.log
+latest_logs/
 
 # C/C++ build artifacts & NDK
 .cxx/

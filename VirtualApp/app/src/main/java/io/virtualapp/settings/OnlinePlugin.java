@@ -2,7 +2,7 @@ package io.virtualapp.settings;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.app.ProgressDialog;
+import android.app.Dialog;
 import android.os.SystemClock;
 //import android.support.v7.app.AlertDialog;
 import android.text.TextUtils;
@@ -31,6 +31,7 @@ import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 
+import io.virtualapp.utils.DialogUtil;
 import static io.virtualapp.utils.DialogUtil.showDialog;
 
 /**
@@ -61,7 +62,7 @@ public class OnlinePlugin {
                 .setTitle(android.R.string.dialog_alert_title)
                 .setMessage(tips)
                 .setPositiveButton(android.R.string.ok, ((dialog1, which1) -> {
-                    ProgressDialog progressDialog = new ProgressDialog(context);
+                    Dialog progressDialog = DialogUtil.createProgressDialog(context, "Please wait...");
                     progressDialog.setCancelable(false);
                     progressDialog.show();
 
@@ -90,7 +91,7 @@ public class OnlinePlugin {
         showDialog(failDialog);
     }
 
-    private static String downloadAndInstall(Activity activity, ProgressDialog dialog, String url, String packageName) {
+    private static String downloadAndInstall(Activity activity, Dialog dialog, String url, String packageName) {
         OkHttpClient client = new OkHttpClient.Builder()
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
@@ -188,13 +189,13 @@ public class OnlinePlugin {
         return null;
     }
 
-    private static void updateMessage(Activity activity, ProgressDialog dialog, String msg) {
+    private static void updateMessage(Activity activity, Dialog dialog, String msg) {
         if (activity == null || dialog == null || TextUtils.isEmpty(msg)) {
             return;
         }
         Log.i(TAG, "update dialog message: " + msg);
         activity.runOnUiThread(() -> {
-            dialog.setMessage(msg);
+            DialogUtil.updateProgressMessage(dialog, msg);
         });
     }
 }

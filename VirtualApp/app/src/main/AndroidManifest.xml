@@ -3,6 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" tools:ignore="QueryAllPackagesPermission" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
@@ -24,26 +26,21 @@
         </intent>
     </queries>
 
-    <uses-sdk tools:overrideLibrary="com.android.launcher3,android.support.dynamicanimation" />
-
-
     <application
         android:name=".XApp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/vxp"
-        android:theme="@style/LauncherTheme"
-        tools:replace="android:icon,android:label">
+        android:theme="@style/AppTheme"
+        tools:replace="android:label">
 
         <meta-data
             android:name="android.max_aspect"
-            android:value="2.3"
-            tools:replace="android:value" />
+            android:value="2.3" />
 
 
         <activity
             android:name=".splash.SplashActivity"
-            tools:node="replace"
             android:screenOrientation="portrait"
             android:exported="true"
             android:theme="@style/AppTheme">
@@ -55,14 +52,12 @@
 
         <activity
             android:name=".home.ListAppActivity"
-            tools:node="replace"
             android:screenOrientation="portrait"
             android:exported="false"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
 
         <activity
             android:name=".home.LoadingActivity"
-            tools:node="replace"
             android:excludeFromRecents="true"
             android:noHistory="true"
             android:exported="false"
@@ -85,7 +80,7 @@
             android:label="@string/settings_title"
             android:screenOrientation="portrait"
             android:exported="false"
-            android:theme="@android:style/Theme.Material.Light" />
+            android:theme="@style/SettingsTheme" />
 
 
         <activity

@@ -28,7 +28,6 @@ public class PackageSetting implements Parcelable {
     public String apkPath;
     public String libPath;
     public boolean dependSystem;
-    @Deprecated
     public boolean skipDexOpt;
     public int appId;
     public long firstInstallTime;
@@ -46,8 +45,12 @@ public class PackageSetting implements Parcelable {
         this.libPath = in.readString();
         this.dependSystem = in.readByte() != 0;
         this.appId = in.readInt();
-        //noinspection unchecked
-        this.userState = in.readSparseArray(PackageUserState.class.getClassLoader());
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            this.userState = in.readSparseArray(PackageUserState.class.getClassLoader(), PackageUserState.class);
+        } else {
+            //noinspection unchecked
+            this.userState = in.readSparseArray(PackageUserState.class.getClassLoader());
+        }
         this.skipDexOpt = in.readByte() != 0;
         this.splitCodePaths = in.createStringArray();
     }

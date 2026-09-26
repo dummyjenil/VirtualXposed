@@ -19,6 +19,7 @@ import com.lody.virtual.client.stub.VASettings;
 import com.lody.virtual.helper.utils.ArrayUtils;
 import com.lody.virtual.helper.utils.ClassUtils;
 import com.lody.virtual.helper.utils.ComponentUtils;
+import com.lody.virtual.helper.utils.VLog;
 import com.lody.virtual.remote.AppTaskInfo;
 import com.lody.virtual.remote.StubActivityRecord;
 
@@ -179,7 +180,7 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
      * as well. A new TaskRecord will be recreated in `onActivityCreated`
      */
     private void optimizeTasksLocked() {
-        // noinspection deprecation
+        // noinspection unchecked
         ArrayList<ActivityManager.RecentTaskInfo> recentTask = new ArrayList<>(mAM.getRecentTasks(Integer.MAX_VALUE,
                 ActivityManager.RECENT_WITH_EXCLUDED | ActivityManager.RECENT_IGNORE_UNAVAILABLE));
         int N = mHistory.size();
@@ -402,6 +403,7 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
     }
 
     private void startActivityInNewTaskLocked(int userId, Intent intent, ActivityInfo info, Bundle options) {
+        VLog.i("ActivityStack", "startActivityInNewTaskLocked: starting in new task for " + (info != null ? info.name : "null") + ", intent=" + intent);
         Intent destIntent = startActivityProcess(userId, null, intent, info);
         if (destIntent != null) {
             destIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -409,17 +411,25 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
             destIntent.addFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
 
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-                // noinspection deprecation
+                // noinspection unchecked
                 destIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_WHEN_TASK_RESET);
             } else {
                 destIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT);
             }
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-                VirtualCore.get().getContext().startActivity(destIntent, options);
-            } else {
-                VirtualCore.get().getContext().startActivity(destIntent);
+            try {
+                VLog.i("ActivityStack", "startActivityInNewTaskLocked: launching host stub intent=" + destIntent);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+                    VirtualCore.get().getContext().startActivity(destIntent, options);
+                } else {
+                    VirtualCore.get().getContext().startActivity(destIntent);
+                }
+                VLog.i("ActivityStack", "startActivityInNewTaskLocked: host startActivity called successfully.");
+            } catch (Throwable e) {
+                VLog.e("ActivityStack", "startActivityInNewTaskLocked: host context.startActivity FAILED!", e);
             }
+        } else {
+            VLog.e("ActivityStack", "startActivityInNewTaskLocked: startActivityProcess returned null for intent=" + intent);
         }
     }
 
@@ -558,12 +568,16 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
 
     private Intent startActivityProcess(int userId, ActivityRecord sourceRecord, Intent intent, ActivityInfo info) {
         intent = new Intent(intent);
+        VLog.i("ActivityStack", "startActivityProcess: calling startProcessIfNeedLocked for processName=" + info.processName + ", pkg=" + info.packageName + ", userId=" + userId);
         ProcessRecord targetApp = mService.startProcessIfNeedLocked(info.processName, userId, info.packageName);
         if (targetApp == null) {
+            VLog.e("ActivityStack", "startActivityProcess FAILED: startProcessIfNeedLocked returned null for " + info.processName);
             return null;
         }
+        String stubActivity = fetchStubActivity(targetApp.vpid, info);
+        VLog.i("ActivityStack", "startActivityProcess: targetApp vpid=" + targetApp.vpid + ", stubActivity=" + stubActivity);
         Intent targetIntent = new Intent();
-        targetIntent.setClassName(VirtualCore.get().getHostPkg(), fetchStubActivity(targetApp.vpid, info));
+        targetIntent.setClassName(VirtualCore.get().getHostPkg(), stubActivity);
         ComponentName component = intent.getComponent();
         if (component == null) {
             component = ComponentUtils.toComponentName(info);
@@ -572,6 +586,7 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
         StubActivityRecord saveInstance = new StubActivityRecord(intent, info,
                 sourceRecord != null ? sourceRecord.component : null, userId);
         saveInstance.saveToIntent(targetIntent);
+        VLog.i("ActivityStack", "startActivityProcess SUCCESS: targetIntent=" + targetIntent + " targeting stub=" + stubActivity);
         return targetIntent;
     }
 

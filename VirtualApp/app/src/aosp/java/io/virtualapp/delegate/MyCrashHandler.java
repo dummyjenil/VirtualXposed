@@ -26,6 +26,7 @@ public class MyCrashHandler extends BaseCrashHandler {
     private static final String KEY_LAST_CRASH_TYPE = "last_crash_type";
 
     @Override
+    @SuppressWarnings("deprecation")
     public void handleUncaughtException(Thread t, Throwable e) {
         SharedPreferences sp = VirtualCore.get().getContext().getSharedPreferences(CRASH_SP, Context.MODE_MULTI_PROCESS);
 

@@ -90,7 +90,39 @@ Open VirtualXposed and add target applications and Xposed modules into the virtu
 - **Android NDK**: NDK installed for compiling native C/C++ libraries
 - **Gradle**: Gradle 8.12+ (managed automatically by `./gradlew`)
 
-### Build Steps
+### Quick Build Script (`build.sh`)
+
+You can build APKs locally using the automated `build.sh` script:
+
+```bash
+# Make script executable
+chmod +x build.sh
+
+# Build all APKs (Debug & Release)
+./build.sh
+
+# Or build specific variants:
+./build.sh debug    # Builds Debug APK only
+./build.sh release  # Builds Release APK only
+./build.sh clean    # Cleans build cache
+```
+
+Generated APKs will be neatly saved into the `buildOutput/` directory.
+
+### Deprecation & Modernization Scanner (`detect_deprecated.sh`)
+
+To scan the codebase for all deprecated Java/Android APIs (using Gradle `-Xlint:deprecation` and static AST pattern detection) and generate a modernization report:
+
+```bash
+chmod +x detect_deprecated.sh
+./detect_deprecated.sh
+```
+
+This generates `DEPRECATED_REPORT.md` with line-by-line modern replacement suggestions.
+
+---
+
+### Manual Build Steps
 
 1. **Clone the repository:**
    ```bash
@@ -104,7 +136,7 @@ Open VirtualXposed and add target applications and Xposed modules into the virtu
    sdk.dir=/path/to/your/android-sdk
    ```
 
-3. **Build the APK:**
+3. **Build via Gradle:**
    ```bash
    # Build debug APK
    ./gradlew assembleAospDebug
@@ -112,6 +144,7 @@ Open VirtualXposed and add target applications and Xposed modules into the virtu
    # Build release APK
    ./gradlew assembleAospRelease
    ```
+
 
 ---
 

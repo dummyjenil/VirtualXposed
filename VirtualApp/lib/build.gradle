@@ -1,14 +1,14 @@
 apply plugin: 'com.android.library'
 
 android {
-    namespace 'com.lody.virtual'
-    compileSdk 36
-
-    buildToolsVersion "36.0.0"
+    namespace = 'com.lody.virtual'
+    compileSdk = 36
+    ndkVersion = "27.0.12077973"
+    buildToolsVersion = "36.0.0"
 
     defaultConfig {
-        minSdk 21
-        targetSdk 36
+        minSdk = 21
+        targetSdk = 36
         externalNativeBuild {
             ndkBuild {
                 abiFilters "arm64-v8a", "x86_64"
@@ -16,41 +16,56 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     buildTypes {
         release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            minifyEnabled = false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+
     externalNativeBuild {
         ndkBuild {
             path file("src/main/jni/Android.mk")
         }
     }
     lint {
-        //IJobService need NewApi
         warning 'NewApi', 'OnClick'
-        checkReleaseBuilds false
-        abortOnError false
+        checkReleaseBuilds = false
+        abortOnError = false
     }
     buildFeatures {
-        aidl true
+        aidl = true
     }
 }
 
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
-    implementation('com.github.android-hacker:exposed:0.3.6')
+    implementation 'me.weishu.exposed:exposed-core:0.8.1'
 
     // Modern Android 9-14+ Hidden API Bypass (LSPosed / LSPatch component)
     implementation 'org.lsposed.hiddenapibypass:hiddenapibypass:4.3'
 
-    implementation "me.weishu:free_reflection:3.1.0"
-    implementation "me.weishu:epic:0.11.2"
-    implementation "me.weishu.exposed:exposed-xposedapi:0.4.6"
+    implementation 'me.weishu:free_reflection:3.0.1'
+    implementation 'me.weishu:epic:0.11.1'
+    implementation 'me.weishu.exposed:exposed-xposedapi:0.4.6'
 }
+
+
+repositories {
+    google()
+    mavenCentral()
+    mavenLocal()
+    maven { url = uri('https://jitpack.io') }
+    maven { url = uri('https://maven.aliyun.com/repository/public') }
+    maven { url = uri('https://maven.aliyun.com/repository/jcenter') }
+    maven { url = uri('https://jcenter.bintray.com') }
+    maven { url = uri('https://raw.githubusercontent.com/tiann/epic/master/repository') }
+    maven { url = uri('https://raw.githubusercontent.com/android-hacker/exposed/master/repository') }
+}
+
+
 
 

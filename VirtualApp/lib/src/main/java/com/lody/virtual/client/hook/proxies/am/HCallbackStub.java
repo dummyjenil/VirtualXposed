@@ -103,24 +103,30 @@ import mirror.android.app.IActivityManager;
         private boolean handleLaunchActivity(Message msg) {
             Object r = msg.obj;
             Intent stubIntent = ActivityThread.ActivityClientRecord.intent.get(r);
+            VLog.i(TAG, "HCallbackStub.handleLaunchActivity START: stubIntent=" + stubIntent);
             StubActivityRecord saveInstance = new StubActivityRecord(stubIntent);
             if (saveInstance.intent == null) {
+                VLog.w(TAG, "HCallbackStub.handleLaunchActivity: saveInstance.intent is null for " + stubIntent);
                 return true;
             }
             Intent intent = saveInstance.intent;
             ComponentName caller = saveInstance.caller;
             IBinder token = ActivityThread.ActivityClientRecord.token.get(r);
             ActivityInfo info = saveInstance.info;
+            VLog.i(TAG, "HCallbackStub.handleLaunchActivity: target pkg=" + info.packageName + ", activity=" + info.name + ", isBound=" + VClientImpl.get().isBound());
             if (VClientImpl.get().getToken() == null) {
                 InstalledAppInfo installedAppInfo = VirtualCore.get().getInstalledAppInfo(info.packageName, 0);
                 if(installedAppInfo == null){
+                    VLog.e(TAG, "HCallbackStub.handleLaunchActivity FAILED: installedAppInfo is null for " + info.packageName);
                     return true;
                 }
+                VLog.w(TAG, "HCallbackStub.handleLaunchActivity: token is null, restarting process for " + info.packageName);
                 VActivityManager.get().processRestarted(info.packageName, info.processName, saveInstance.userId);
                 getH().sendMessageAtFrontOfQueue(Message.obtain(msg));
                 return false;
             }
             if (!VClientImpl.get().isBound()) {
+                VLog.i(TAG, "HCallbackStub.handleLaunchActivity: binding application for " + info.packageName);
                 VClientImpl.get().bindApplicationForActivity(info.packageName, info.processName, intent);
                 getH().sendMessageAtFrontOfQueue(Message.obtain(msg));
                 return false;
@@ -135,6 +141,7 @@ import mirror.android.app.IActivityManager;
             intent.setExtrasClassLoader(appClassLoader);
             ActivityThread.ActivityClientRecord.intent.set(r, intent);
             ActivityThread.ActivityClientRecord.activityInfo.set(r, info);
+            VLog.i(TAG, "HCallbackStub.handleLaunchActivity SUCCESS for " + info.name);
             return true;
         }
 

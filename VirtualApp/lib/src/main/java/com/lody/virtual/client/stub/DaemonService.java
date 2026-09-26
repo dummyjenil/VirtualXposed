@@ -29,7 +29,12 @@ public class DaemonService extends Service {
 			showNotification = false;
 		}
 
-		context.startService(new Intent(context, DaemonService.class));
+		try {
+			context.startService(new Intent(context, DaemonService.class));
+		} catch (Throwable e) {
+			// On Android 8.0+ (API 26+) BackgroundServiceStartNotAllowedException can occur when invoked from background provider
+			e.printStackTrace();
+		}
 		if (VirtualCore.get().isServerProcess()) {
 			// PrivilegeAppOptimizer.notifyBootFinish();
 			DaemonJobService.scheduleJob(context);
@@ -50,11 +55,15 @@ public class DaemonService extends Service {
 	@Override
 	public void onCreate() {
 		super.onCreate();
-		if (!showNotification) {
+		if (!showNotification || Build.VERSION.SDK_INT >= 26) {
 			return;
 		}
-        startService(new Intent(this, InnerService.class));
-        startForeground(NOTIFY_ID, new Notification());
+		try {
+			startService(new Intent(this, InnerService.class));
+			startForeground(NOTIFY_ID, new Notification());
+		} catch (Throwable e) {
+			e.printStackTrace();
+		}
 	}
 
 	@Override
@@ -66,9 +75,17 @@ public class DaemonService extends Service {
 
         @Override
         public int onStartCommand(Intent intent, int flags, int startId) {
-            startForeground(NOTIFY_ID, new Notification());
-            stopForeground(true);
-            stopSelf();
+            if (Build.VERSION.SDK_INT < 26) {
+                try {
+                    startForeground(NOTIFY_ID, new Notification());
+                    stopForeground(true);
+                    stopSelf();
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                }
+            } else {
+                stopSelf();
+            }
             return super.onStartCommand(intent, flags, startId);
         }
 

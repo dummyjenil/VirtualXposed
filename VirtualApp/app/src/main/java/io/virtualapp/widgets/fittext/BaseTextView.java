@@ -26,14 +26,12 @@ class BaseTextView extends TextView {
      * 不拆分单词
      */
     protected boolean mKeepWord = true;
-    @SuppressWarnings("deprecation")
     private static final int[] ANDROID_ATTRS = new int[]{
             android.R.attr.includeFontPadding,
             android.R.attr.lineSpacingMultiplier,
             android.R.attr.lineSpacingExtra,
             android.R.attr.maxLines,
-            android.R.attr.singleLine,
-            };
+    };
 
     public BaseTextView(Context context) {
         this(context, null);
@@ -43,19 +41,19 @@ class BaseTextView extends TextView {
         super(context, attrs);
         if (attrs != null) {
             TypedArray a = context.obtainStyledAttributes(attrs, ANDROID_ATTRS);
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
-                mIncludeFontPadding = a.getBoolean(a.getIndex(0),  mIncludeFontPadding);
-                mLineSpacingMult = a.getFloat(a.getIndex(1),  mLineSpacingMult);
-                mLineSpacingAdd = a.getDimensionPixelSize(a.getIndex(2),  (int) mLineSpacingAdd);
-                mMaxLines = a.getInteger(a.getIndex(3), mMaxLines);
+            mIncludeFontPadding = a.getBoolean(0, mIncludeFontPadding);
+            mLineSpacingMult = a.getFloat(1, mLineSpacingMult);
+            mLineSpacingAdd = a.getDimensionPixelSize(2, (int) mLineSpacingAdd);
+            mMaxLines = a.getInteger(3, mMaxLines);
+            if (mMaxLines == 1) {
+                mSingleLine = true;
             }
-            mSingleLine = a.getBoolean(android.R.attr.singleLine, mSingleLine);
             a.recycle();
         }
     }
 
     public BaseTextView(Context context, AttributeSet attrs, int defStyleAttr) {
-        super(context, attrs);
+        super(context, attrs, defStyleAttr);
     }
 
     public boolean isKeepWord() {

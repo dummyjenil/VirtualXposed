@@ -36,9 +36,7 @@ import mirror.com.android.internal.R_Hide;
 
     private static void fixNotificationIcon(Context context, Notification notification, Notification.Builder builder) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            //noinspection deprecation
             builder.setSmallIcon(notification.icon);
-            //noinspection deprecation
             builder.setLargeIcon(notification.largeIcon);
         } else {
             Icon icon = notification.getSmallIcon();
@@ -207,11 +205,12 @@ import mirror.com.android.internal.R_Hide;
             return;
         }
         try {
-            //noinspection deprecation
             int id = R_Hide.id.icon.get();
             //only fake small icon
             if (!hasIconBitmap && notification.largeIcon == null) {
-                Drawable drawable = resources.getDrawable(notification.icon);
+                Drawable drawable = Build.VERSION.SDK_INT >= 21
+                        ? resources.getDrawable(notification.icon, null)
+                        : resources.getDrawable(notification.icon);
                 drawable.setLevel(notification.iconLevel);
                 Bitmap bitmap = drawableToBitMap(drawable);
                 remoteViews.setImageViewBitmap(id, bitmap);

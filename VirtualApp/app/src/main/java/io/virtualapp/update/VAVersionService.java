@@ -8,6 +8,8 @@ import android.os.SystemClock;
 import android.util.Log;
 import android.widget.Toast;
 
+import androidx.core.content.pm.PackageInfoCompat;
+
 import com.allenliu.versionchecklib.core.AVersionService;
 import com.allenliu.versionchecklib.core.AllenChecker;
 import com.allenliu.versionchecklib.core.VersionParams;
@@ -98,7 +100,7 @@ public class VAVersionService extends AVersionService {
             // ---get the package info---
             PackageManager pm = context.getPackageManager();
             PackageInfo pi = pm.getPackageInfo(context.getPackageName(), 0);
-            return pi.versionCode;
+            return (int) PackageInfoCompat.getLongVersionCode(pi);
         } catch (Exception e) {
             Log.e("VersionInfo", "Exception", e);
         }
