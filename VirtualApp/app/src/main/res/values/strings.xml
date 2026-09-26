@@ -38,7 +38,6 @@
     <string name="about_feedback_wechat_title">WeChat Group (Click to copy)</string>
     <string name="about_feedback_tips">Group number has been copied to clipboard!</string>
     <string name="about_version_title">Version: %1$s</string>
-    <string name="about_donate_title">Donate</string>
     <string name="reboot_tips_1">Reboot successfully!</string>
     <string name="reboot_tips_2">Reboot successfully!</string>
     <string name="reboot_tips_3">Reboot successfully!</string>
@@ -186,5 +185,4 @@ Currently, EXposed has been put on the app store and renamed to Tai Chi. You can
     <string name="install_complete_and_open">Open</string>
     <string name="unsupported_for_32bit_app">32bits App is not supported!</string>
     <string name="package_state_unknown">Unknown</string>
-    <string name="about_donate">Donate me</string>
 </resources>

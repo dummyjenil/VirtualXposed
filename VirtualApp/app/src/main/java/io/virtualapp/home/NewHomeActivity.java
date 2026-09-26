@@ -81,7 +81,6 @@ public class NewHomeActivity extends ListAppActivity {
         showMenuKey();
         mUiHandler = new Handler(Looper.getMainLooper());
         alertForMeizu();
-        alertForDonate();
         mDirectlyBack = sharedPreferences.getBoolean(SettingsActivity.DIRECTLY_BACK_KEY, false);
     }
 
@@ -234,26 +233,6 @@ public class NewHomeActivity extends ListAppActivity {
         }
         if (mDirectlyBack) {
             finish();
-        }
-    }
-
-    private void alertForDonate() {
-        final String TAG = "show_donate";
-        if (Once.beenDone(Once.THIS_APP_VERSION, TAG)) {
-            alertForDoze();
-            return;
-        }
-        AlertDialog alertDialog = new AlertDialog.Builder(getContext())
-                .setTitle(R.string.about_donate)
-                .setMessage(R.string.donate_dialog_content)
-                .setPositiveButton(android.R.string.ok, (dialog, which) -> {
-                    Misc.showDonate(this);
-                    Once.markDone(TAG);
-                })
-                .create();
-        try {
-            alertDialog.show();
-        } catch (Throwable ignored) {
         }
     }
 

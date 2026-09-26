@@ -43,7 +43,6 @@ public class SettingsActivity extends AppCompatActivity implements PreferenceFra
     private static final String TASK_MANAGE_KEY = "settings_task_manage";
     private static final String DESKTOP_SETTINGS_KEY = "settings_desktop";
     private static final String FAQ_SETTINGS_KEY = "settings_faq";
-    private static final String DONATE_KEY = "settings_donate";
     private static final String ABOUT_KEY = "settings_about";
     private static final String REBOOT_KEY = "settings_reboot";
     private static final String HIDE_SETTINGS_KEY = "advance_settings_hide_settings";
@@ -116,7 +115,6 @@ public class SettingsActivity extends AppCompatActivity implements PreferenceFra
             Preference taskManage = findPreference(TASK_MANAGE_KEY);
             Preference desktop = findPreference(DESKTOP_SETTINGS_KEY);
             Preference faq = findPreference(FAQ_SETTINGS_KEY);
-            Preference donate = findPreference(DONATE_KEY);
             Preference about = findPreference(ABOUT_KEY);
             Preference reboot = findPreference(REBOOT_KEY);
             Preference fileMange = findPreference(FILE_MANAGE);
@@ -198,15 +196,6 @@ public class SettingsActivity extends AppCompatActivity implements PreferenceFra
                 desktop.setOnPreferenceClickListener(preference -> {
                     if (getContext() != null) {
                         Toast.makeText(getContext(), R.string.settings_desktop_text, Toast.LENGTH_SHORT).show();
-                    }
-                    return false;
-                });
-            }
-
-            if (donate != null) {
-                donate.setOnPreferenceClickListener(preference -> {
-                    if (getActivity() != null) {
-                        Misc.showDonate(getActivity());
                     }
                     return false;
                 });

@@ -40,6 +40,22 @@ public final class PackageManagerStub extends MethodInvocationProxy<MethodInvoca
             addMethodProxy(new ResultStaticMethodProxy("notifyPackageUse", 0));
             addMethodProxy(new ResultStaticMethodProxy("setInstantAppCookie", false));
             addMethodProxy(new ResultStaticMethodProxy("isInstantApp", false));
+            addMethodProxy(new ResultStaticMethodProxy("canRequestPackageInstalls", true));
+            addMethodProxy(new ResultStaticMethodProxy("isPackageSuspended", false));
+            addMethodProxy(new ResultStaticMethodProxy("isPackageSuspendedForUser", false));
+        }
+        if (Build.VERSION.SDK_INT >= 23) {
+            // Android App Links / Intent Filter Verification (2 = INTENT_FILTER_DOMAIN_VERIFICATION_STATUS_ALWAYS)
+            addMethodProxy(new ResultStaticMethodProxy("getIntentFilterVerificationStatus", 2));
+            addMethodProxy(new ResultStaticMethodProxy("getIntentFilterVerificationStatusAsUser", 2));
+            addMethodProxy(new ResultStaticMethodProxy("updateIntentVerificationStatusAsUser", true));
+            addMethodProxy(new ResultStaticMethodProxy("verifyIntentFilter", 0));
+        }
+        if (Build.VERSION.SDK_INT >= 29) {
+            addMethodProxy(new ResultStaticMethodProxy("isAutoRevokeWhitelisted", true));
+            addMethodProxy(new ResultStaticMethodProxy("getHarmfulAppWarning", null));
+            addMethodProxy(new ResultStaticMethodProxy("setHarmfulAppWarning", 0));
+            addMethodProxy(new ResultStaticMethodProxy("getInstallSourceInfo", null));
         }
 
     }

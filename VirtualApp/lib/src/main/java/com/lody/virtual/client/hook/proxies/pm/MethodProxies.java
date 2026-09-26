@@ -1247,4 +1247,169 @@ class MethodProxies {
         }
     }
 
+    static class CanRequestPackageInstalls extends MethodProxy {
+        @Override
+        public String getMethodName() {
+            return "canRequestPackageInstalls";
+        }
+
+        @Override
+        public Object call(Object who, Method method, Object... args) throws Throwable {
+            return true;
+        }
+
+        @Override
+        public boolean isEnable() {
+            return isAppProcess();
+        }
+    }
+
+    static class IsPackageSuspended extends MethodProxy {
+        @Override
+        public String getMethodName() {
+            return "isPackageSuspended";
+        }
+
+        @Override
+        public Object call(Object who, Method method, Object... args) throws Throwable {
+            return false;
+        }
+
+        @Override
+        public boolean isEnable() {
+            return isAppProcess();
+        }
+    }
+
+    static class IsPackageSuspendedForUser extends MethodProxy {
+        @Override
+        public String getMethodName() {
+            return "isPackageSuspendedForUser";
+        }
+
+        @Override
+        public Object call(Object who, Method method, Object... args) throws Throwable {
+            return false;
+        }
+
+        @Override
+        public boolean isEnable() {
+            return isAppProcess();
+        }
+    }
+
+    static class GetInstallSourceInfo extends MethodProxy {
+        @Override
+        public String getMethodName() {
+            return "getInstallSourceInfo";
+        }
+
+        @Override
+        public Object call(Object who, Method method, Object... args) throws Throwable {
+            try {
+                return method.invoke(who, args);
+            } catch (Throwable t) {
+                return null;
+            }
+        }
+
+        @Override
+        public boolean isEnable() {
+            return isAppProcess();
+        }
+    }
+
+    static class GetIntentFilterVerificationStatus extends MethodProxy {
+        @Override
+        public String getMethodName() {
+            return "getIntentFilterVerificationStatus";
+        }
+
+        @Override
+        public Object call(Object who, Method method, Object... args) throws Throwable {
+            // INTENT_FILTER_DOMAIN_VERIFICATION_STATUS_ALWAYS = 2
+            return 2;
+        }
+
+        @Override
+        public boolean isEnable() {
+            return isAppProcess();
+        }
+    }
+
+    static class GetIntentFilterVerificationStatusAsUser extends MethodProxy {
+        @Override
+        public String getMethodName() {
+            return "getIntentFilterVerificationStatusAsUser";
+        }
+
+        @Override
+        public Object call(Object who, Method method, Object... args) throws Throwable {
+            // INTENT_FILTER_DOMAIN_VERIFICATION_STATUS_ALWAYS = 2
+            return 2;
+        }
+
+        @Override
+        public boolean isEnable() {
+            return isAppProcess();
+        }
+    }
+
+    static class UpdateIntentVerificationStatusAsUser extends MethodProxy {
+        @Override
+        public String getMethodName() {
+            return "updateIntentVerificationStatusAsUser";
+        }
+
+        @Override
+        public Object call(Object who, Method method, Object... args) throws Throwable {
+            return true;
+        }
+
+        @Override
+        public boolean isEnable() {
+            return isAppProcess();
+        }
+    }
+
+    static class GetIntentFilterVerifications extends MethodProxy {
+        @Override
+        public String getMethodName() {
+            return "getIntentFilterVerifications";
+        }
+
+        @Override
+        public Object call(Object who, Method method, Object... args) throws Throwable {
+            if (ParceledListSliceCompat.isReturnParceledListSlice(method)) {
+                return ParceledListSliceCompat.create(new ArrayList<>());
+            }
+            return new ArrayList<>();
+        }
+
+        @Override
+        public boolean isEnable() {
+            return isAppProcess();
+        }
+    }
+
+    static class GetAllIntentFilters extends MethodProxy {
+        @Override
+        public String getMethodName() {
+            return "getAllIntentFilters";
+        }
+
+        @Override
+        public Object call(Object who, Method method, Object... args) throws Throwable {
+            if (ParceledListSliceCompat.isReturnParceledListSlice(method)) {
+                return ParceledListSliceCompat.create(new ArrayList<>());
+            }
+            return new ArrayList<>();
+        }
+
+        @Override
+        public boolean isEnable() {
+            return isAppProcess();
+        }
+    }
+
 }
