@@ -48,7 +48,6 @@ import io.virtualapp.abs.ui.VUiKit;
 import io.virtualapp.settings.SettingsActivity;
 import io.virtualapp.update.VAVersionService;
 import io.virtualapp.utils.DialogUtil;
-import io.virtualapp.utils.Misc;
 import jonathanfinerty.once.Once;
 
 import static io.virtualapp.XApp.XPOSED_INSTALLER_PACKAGE;

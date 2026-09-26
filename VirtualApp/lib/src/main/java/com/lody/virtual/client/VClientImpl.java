@@ -63,7 +63,8 @@ import java.util.Map;
 import java.util.Set;
 
 import dalvik.system.DelegateLastClassLoader;
-import me.weishu.exposed.ExposedBridge;
+import com.lody.virtual.lsposed.LSPosedBridge;
+import com.lody.virtual.lsposed.LSPosedSelfTest;
 import mirror.android.app.ActivityThread;
 import mirror.android.app.ActivityThreadNMR1;
 import mirror.android.app.ContextImpl;
@@ -353,25 +354,29 @@ public final class VClientImpl extends IVClient.Stub {
 
         boolean enableXposed = VirtualCore.get().isXposedEnabled();
         if (enableXposed) {
-            VLog.i(TAG, "VClientImpl: Xposed is enabled, initializing ExposedBridge.initOnce...");
+            VLog.i(TAG, "VClientImpl: LSPosed is enabled, initializing LSPosed Core Engine...");
             try {
                 ClassLoader originClassLoader = context.getClassLoader();
-                VLog.i(TAG, "VClientImpl: calling ExposedBridge.initOnce with originClassLoader=" + originClassLoader);
-                ExposedBridge.initOnce(context, data.appInfo, originClassLoader);
-                VLog.i(TAG, "VClientImpl: ExposedBridge.initOnce completed!");
+                VLog.i(TAG, "VClientImpl: initializing LSPosedBridge with originClassLoader=" + originClassLoader);
+                LSPosedBridge.init(context, originClassLoader);
+
+                // Run sample self-test to verify LSPosed hooking engine
+                LSPosedSelfTest.TestReport testReport = LSPosedSelfTest.runSelfTest();
+                VLog.i(TAG, "VClientImpl: LSPosed Hook Diagnostic -> " + testReport.statusMessage);
+
                 List<InstalledAppInfo> modules = VirtualCore.get().getInstalledApps(0);
-                VLog.i(TAG, "VClientImpl: loading " + modules.size() + " installed modules...");
+                VLog.i(TAG, "VClientImpl: loading " + modules.size() + " installed LSPosed modules...");
                 for (InstalledAppInfo module : modules) {
-                    VLog.i(TAG, "VClientImpl: loading module " + module.packageName + " from " + module.apkPath);
-                    ExposedBridge.loadModule(module.apkPath, module.getOdexFile().getParent(), module.libPath,
+                    VLog.i(TAG, "VClientImpl: loading LSPosed module " + module.packageName + " from " + module.apkPath);
+                    LSPosedBridge.loadModule(module.apkPath, module.getOdexFile().getParent(), module.libPath,
                             data.appInfo, originClassLoader);
                 }
-                VLog.i(TAG, "VClientImpl: all modules loaded!");
+                VLog.i(TAG, "VClientImpl: all LSPosed modules loaded successfully!");
             } catch (Throwable t) {
-                VLog.e(TAG, "Failed to initialize ExposedBridge: " + t.getMessage(), t);
+                VLog.e(TAG, "Failed to initialize LSPosed engine: " + t.getMessage(), t);
             }
         } else {
-            VLog.w(TAG, "Xposed is disable..");
+            VLog.w(TAG, "LSPosed is disabled in VirtualCore settings.");
         }
 
         VLog.i(TAG, "VClientImpl: calling LoadedApk.getClassLoader...");

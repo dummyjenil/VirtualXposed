@@ -43,14 +43,14 @@ android {
 
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
-    implementation 'me.weishu.exposed:exposed-core:0.8.1'
 
-    // Modern Android 9-14+ Hidden API Bypass (LSPosed / LSPatch component)
+    // Modern Android 9-15+ Hidden API Bypass (LSPosed component)
     implementation 'org.lsposed.hiddenapibypass:hiddenapibypass:4.3'
 
-    implementation 'me.weishu:free_reflection:3.0.1'
-    implementation 'me.weishu:epic:0.11.1'
-    implementation 'me.weishu.exposed:exposed-xposedapi:0.4.6'
+    // LSPosed ART Hooking Core Engine (Pine & Xposed API)
+    implementation 'top.canyie.pine:core:0.2.7'
+    implementation 'top.canyie.pine:xposed:0.0.9'
+    compileOnly 'de.robv.android.xposed:api:82'
 }
 
 

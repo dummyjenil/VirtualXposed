@@ -57,7 +57,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-import me.weishu.reflection.Reflection;
 import mirror.android.app.ActivityThread;
 
 /**
@@ -193,10 +192,7 @@ public final class VirtualCore {
                 } catch (Throwable ignored) {
                 }
             }
-            try {
-                Reflection.unseal(context);
-            } catch (Throwable ignored) {
-            }
+
 
 
             VASettings.STUB_CP_AUTHORITY = context.getPackageName() + "." + VASettings.STUB_DEF_AUTHORITY;

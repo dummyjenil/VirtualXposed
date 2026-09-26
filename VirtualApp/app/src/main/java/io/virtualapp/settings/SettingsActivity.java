@@ -28,7 +28,6 @@ import io.virtualapp.R;
 import io.virtualapp.VCommends;
 import io.virtualapp.gms.FakeGms;
 import io.virtualapp.home.ListAppActivity;
-import io.virtualapp.utils.Misc;
 
 /**
  * Modernized Settings Activity using AndroidX PreferenceFragmentCompat and AppCompatActivity
@@ -156,6 +155,22 @@ public class SettingsActivity extends AppCompatActivity implements PreferenceFra
                 recommend.setOnPreferenceClickListener(preference -> {
                     startActivity(new Intent(getActivity(), RecommendPluginActivity.class));
                     return false;
+                });
+            }
+
+            Preference lsposedTest = findPreference("settings_lsposed_test");
+            if (lsposedTest != null) {
+                lsposedTest.setOnPreferenceClickListener(preference -> {
+                    if (getActivity() != null) {
+                        com.lody.virtual.lsposed.LSPosedSelfTest.TestReport report =
+                                com.lody.virtual.lsposed.LSPosedSelfTest.runSelfTest();
+                        new AlertDialog.Builder(getActivity())
+                                .setTitle(report.isSuccess ? "LSPosed Engine Active" : "LSPosed Test Failed")
+                                .setMessage(report.toString())
+                                .setPositiveButton(android.R.string.ok, null)
+                                .show();
+                    }
+                    return true;
                 });
             }
 

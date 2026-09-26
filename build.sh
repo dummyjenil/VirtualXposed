@@ -80,12 +80,12 @@ cd "$VIRTUAL_APP_DIR"
 
 case "$BUILD_TARGET" in
     debug|install)
-        echo -e "${BLUE}Building AOSP Debug APK...${NC}"
-        ./gradlew assembleAospDebug --parallel
+        echo -e "${BLUE}Building Standard Debug APK...${NC}"
+        ./gradlew assembleDebug --parallel
         ;;
     release)
-        echo -e "${BLUE}Building AOSP Release APK...${NC}"
-        ./gradlew assembleAospRelease --parallel
+        echo -e "${BLUE}Building Standard Release APK...${NC}"
+        ./gradlew assembleRelease --parallel
         ;;
     clean)
         echo -e "${BLUE}Cleaning build directories...${NC}"
@@ -95,16 +95,17 @@ case "$BUILD_TARGET" in
         ;;
     all|*)
         echo -e "${BLUE}Building both Debug and Release APKs...${NC}"
-        ./gradlew assembleAospDebug assembleAospRelease --parallel
+        ./gradlew assembleDebug assembleRelease --parallel
         ;;
 esac
 
 
 # 4. Collect and Display Output APKs
 echo -e "\n${YELLOW}[4/5] Collecting output APKs...${NC}"
+rm -rf "$OUTPUT_DIR"
 mkdir -p "$OUTPUT_DIR"
 
-FOUND_APKS=$(find "$VIRTUAL_APP_DIR/app/build/outputs/apk" -name "*.apk" 2>/dev/null || true)
+FOUND_APKS=$(find "$VIRTUAL_APP_DIR/app/build/outputs/apk/debug" "$VIRTUAL_APP_DIR/app/build/outputs/apk/release" -name "*.apk" 2>/dev/null || true)
 
 INSTALLABLE_APK=""
 

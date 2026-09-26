@@ -18,6 +18,12 @@
         android:persistent="false"
         android:title="@string/settings_plugin_recommend" />
 
+    <Preference
+        android:key="settings_lsposed_test"
+        android:persistent="false"
+        android:summary="@string/settings_lsposed_test_summary"
+        android:title="@string/settings_lsposed_test" />
+
     <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
         android:key="settings_advance"
         android:title="@string/settings_advance">
