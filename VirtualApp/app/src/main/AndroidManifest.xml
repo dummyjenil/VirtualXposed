@@ -4,8 +4,28 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" tools:ignore="QueryAllPackagesPermission" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage" />
+
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+        </intent>
+        <intent>
+            <action android:name="de.robv.android.xposed.installer" />
+        </intent>
+        <intent>
+            <action android:name="org.meowcat.edxposed.manager" />
+        </intent>
+        <intent>
+            <action android:name="org.lsposed.manager" />
+        </intent>
+    </queries>
 
     <uses-sdk tools:overrideLibrary="com.android.launcher3,android.support.dynamicanimation" />
+
 
     <application
         android:name=".XApp"
@@ -20,10 +40,6 @@
             android:value="2.3"
             tools:replace="android:value" />
 
-        <meta-data
-            android:name="android.support.VERSION"
-            android:value="com.android.support:design:25.4.0"
-            tools:replace="android:value" />
 
         <activity
             android:name=".splash.SplashActivity"

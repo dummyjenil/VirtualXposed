@@ -184,7 +184,17 @@ public final class VirtualCore {
             if (Looper.myLooper() != Looper.getMainLooper()) {
                 throw new IllegalStateException("VirtualCore.startup() must called in main thread.");
             }
-            Reflection.unseal(context);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                try {
+                    org.lsposed.hiddenapibypass.HiddenApiBypass.addHiddenApiExemptions("");
+                } catch (Throwable ignored) {
+                }
+            }
+            try {
+                Reflection.unseal(context);
+            } catch (Throwable ignored) {
+            }
+
 
             VASettings.STUB_CP_AUTHORITY = context.getPackageName() + "." + VASettings.STUB_DEF_AUTHORITY;
             ServiceManagerNative.SERVICE_CP_AUTH = context.getPackageName() + "." + ServiceManagerNative.SERVICE_DEF_AUTH;

@@ -1,2 +1,3 @@
-include ':lib', ':app', ':launcher'
-rootProject.name="VirtualXposed"
+include ':lib', ':app'
+rootProject.name = "VirtualXposed"
+

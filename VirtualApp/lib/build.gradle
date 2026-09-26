@@ -2,18 +2,22 @@ apply plugin: 'com.android.library'
 
 android {
     namespace 'com.lody.virtual'
-    compileSdkVersion 36
+    compileSdk 36
 
     buildToolsVersion "36.0.0"
 
     defaultConfig {
-        minSdkVersion 21
-        targetSdkVersion 36
+        minSdk 21
+        targetSdk 36
         externalNativeBuild {
             ndkBuild {
                 abiFilters "arm64-v8a", "x86_64"
             }
         }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
     buildTypes {
         release {
@@ -28,10 +32,8 @@ android {
     }
     lint {
         //IJobService need NewApi
-        warning 'NewApi','OnClick'
+        warning 'NewApi', 'OnClick'
         checkReleaseBuilds false
-        // Or, if you prefer, you can continue to check for errors in release builds,
-        // but continue the build even when errors are found:
         abortOnError false
     }
     buildFeatures {
@@ -39,32 +41,16 @@ android {
     }
 }
 
-
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
-//    api("me.weishu.exposed:exposed-core:0.8.1") {
-//        exclude group: 'me.weishu', module: 'free_reflection'
-//        exclude group: 'me.weishu', module: 'epic'
-//        exclude group: 'me.weishu.exposed', module: 'exposed-xposedapi'
-//    }
     implementation('com.github.android-hacker:exposed:0.3.6')
 
-    implementation "me.weishu:free_reflection:3.0.1"
-    implementation "me.weishu:epic:0.11.1"
+    // Modern Android 9-14+ Hidden API Bypass (LSPosed / LSPatch component)
+    implementation 'org.lsposed.hiddenapibypass:hiddenapibypass:4.3'
+
+    implementation "me.weishu:free_reflection:3.1.0"
+    implementation "me.weishu:epic:0.11.2"
     implementation "me.weishu.exposed:exposed-xposedapi:0.4.6"
 }
 
-repositories {
-    maven {
-        url 'https://jitpack.io'
-    }
-    maven {
-        // url 'https://maven.google.com/'
-        url 'https://maven.aliyun.com/repository/google'
-        // url 'https://dl.google.com/dl/android/maven2/'
-        name 'Google'
-    }
-    google()
-    mavenCentral()
-    mavenLocal()
-}
+
