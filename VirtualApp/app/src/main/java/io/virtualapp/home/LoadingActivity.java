@@ -16,6 +16,7 @@ import androidx.core.content.ContextCompat;
 import androidx.core.content.IntentCompat;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -37,7 +38,6 @@ import io.virtualapp.abs.ui.VActivity;
 import io.virtualapp.abs.ui.VUiKit;
 import io.virtualapp.home.models.PackageAppData;
 import io.virtualapp.home.repo.PackageAppDataStorage;
-import io.virtualapp.widgets.EatBeansView;
 import jonathanfinerty.once.Once;
 
 /**
@@ -49,7 +49,7 @@ public class LoadingActivity extends VActivity {
     private static final String TAG = "LoadingActivity";
 
     private PackageAppData appModel;
-    private EatBeansView loadingView;
+    private View loadingView;
 
     private static final int REQUEST_PERMISSION_CODE = 100;
 
@@ -83,7 +83,7 @@ public class LoadingActivity extends VActivity {
         start = SystemClock.elapsedRealtime();
 
         setContentView(R.layout.activity_loading);
-        loadingView = (EatBeansView) findViewById(R.id.loading_anim);
+        loadingView = findViewById(R.id.loading_progress);
         int userId = getIntent().getIntExtra(Constants.PASS_KEY_USER, -1);
         String pkg = getIntent().getStringExtra(Constants.PASS_PKG_NAME_ARGUMENT);
         VLog.i(TAG, "LoadingActivity.onCreate: pkg=" + pkg + ", userId=" + userId);
@@ -320,20 +320,10 @@ public class LoadingActivity extends VActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        startAnim();
-    }
-
-    private void startAnim() {
-        if (loadingView != null) {
-            loadingView.startAnim();
-        }
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        if (loadingView != null) {
-            loadingView.stopAnim();
-        }
     }
 }

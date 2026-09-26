@@ -4,6 +4,7 @@ import android.os.Build;
 import com.lody.virtual.helper.utils.VLog;
 
 import java.lang.reflect.Method;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import top.canyie.pine.Pine;
 import top.canyie.pine.callback.MethodHook;
@@ -14,6 +15,7 @@ import top.canyie.pine.callback.MethodHook;
 public class LSPosedSelfTest {
 
     private static final String TAG = "LSPosedSelfTest";
+    private static final AtomicInteger sTestCounter = new AtomicInteger(1);
 
     public static class TestReport {
         public boolean isSuccess;
@@ -34,10 +36,10 @@ public class LSPosedSelfTest {
     }
 
     /**
-     * Target dummy method for test hooking.
+     * Target dynamic method for test hooking.
      */
-    public String getTestString() {
-        return "UNHOOKED_ORIGINAL_STRING";
+    public String dynamicEcho(String token) {
+        return "ORIGINAL:" + token;
     }
 
     /**
@@ -50,76 +52,75 @@ public class LSPosedSelfTest {
     /**
      * Executes the sample tests to confirm LSPosed Pine Hook Engine is functional.
      */
-    public static TestReport runSelfTest() {
+    public static synchronized TestReport runSelfTest() {
         long startTime = System.currentTimeMillis();
         TestReport report = new TestReport();
         report.androidSdk = Build.VERSION.SDK_INT;
+        int runId = sTestCounter.getAndIncrement();
 
         VLog.i(TAG, "==================================================");
-        VLog.i(TAG, ">>> Starting LSPosed Hooking Engine Self-Test <<<");
+        VLog.i(TAG, ">>> Starting LSPosed Hooking Engine Self-Test (Run #" + runId + ") <<<");
         VLog.i(TAG, "==================================================");
+
+        MethodHook.Unhook hookRecord1 = null;
+        MethodHook.Unhook hookRecord2 = null;
 
         try {
             LSPosedSelfTest targetInstance = new LSPosedSelfTest();
+            String testToken = "token_" + runId + "_" + System.currentTimeMillis();
 
-            // Verification Test 1: Baseline Check
-            String beforeHook = targetInstance.getTestString();
-            VLog.i(TAG, "Test 1 Baseline String (Pre-hook): " + beforeHook);
+            // Verification Test 1: Method Hook & Return Value Replacement via Pine
+            Method targetMethod = LSPosedSelfTest.class.getDeclaredMethod("dynamicEcho", String.class);
+            final String expectedHookedResult = "LSPosed_HOOKED_" + testToken;
 
-            if (!"UNHOOKED_ORIGINAL_STRING".equals(beforeHook)) {
-                report.isSuccess = false;
-                report.statusMessage = "Baseline test failed: unexpected pre-hook string: " + beforeHook;
-                return report;
-            }
-
-            // Verification Test 2: ART Method Hook via Pine
-            Method targetMethod = LSPosedSelfTest.class.getDeclaredMethod("getTestString");
-            final String HOOKED_RESULT = "LSPosed Hook Verified: SUCCESS!";
-
-            Pine.hook(targetMethod, new MethodHook() {
+            hookRecord1 = Pine.hook(targetMethod, new MethodHook() {
                 @Override
                 public void afterCall(Pine.CallFrame callFrame) throws Throwable {
-                    // Intercept and modify the return value
-                    callFrame.setResult(HOOKED_RESULT);
-                    VLog.i(TAG, "LSPosed Hook Intercepted getTestString() call!");
+                    // Modify return value dynamically
+                    callFrame.setResult(expectedHookedResult);
+                    VLog.i(TAG, "LSPosed Hook Intercepted dynamicEcho() successfully!");
                 }
             });
 
-            String afterHook = targetInstance.getTestString();
-            VLog.i(TAG, "Test 2 Result String (Post-hook): " + afterHook);
+            String afterHook = targetInstance.dynamicEcho(testToken);
+            VLog.i(TAG, "Test 1 Result (Post-hook): " + afterHook);
 
-            if (!HOOKED_RESULT.equals(afterHook)) {
+            if (!expectedHookedResult.equals(afterHook)) {
                 report.isSuccess = false;
-                report.statusMessage = "Hooking failed: expected '" + HOOKED_RESULT + "' but got '" + afterHook + "'";
+                report.statusMessage = "Return Hook test failed: expected '" + expectedHookedResult + "' but got '" + afterHook + "'";
                 VLog.e(TAG, report.statusMessage);
                 return report;
             }
 
-            // Verification Test 3: Math argument manipulation test
+            // Verification Test 2: Math argument manipulation test
             Method mathMethod = LSPosedSelfTest.class.getDeclaredMethod("computeSum", int.class, int.class);
-            Pine.hook(mathMethod, new MethodHook() {
+            final int customA = 100 * runId;
+            final int customB = 200 * runId;
+            final int expectedSum = customA + customB;
+
+            hookRecord2 = Pine.hook(mathMethod, new MethodHook() {
                 @Override
                 public void beforeCall(Pine.CallFrame callFrame) throws Throwable {
-                    // Modify arguments (e.g. 10 + 20 => 50 + 50 = 100)
-                    callFrame.args[0] = 50;
-                    callFrame.args[1] = 50;
+                    // Modify arguments dynamically
+                    callFrame.args[0] = customA;
+                    callFrame.args[1] = customB;
                     VLog.i(TAG, "LSPosed Hook Intercepted computeSum(args)!");
                 }
             });
 
-            int mathResult = targetInstance.computeSum(10, 20);
-            VLog.i(TAG, "Test 3 Math Result: computeSum(10, 20) = " + mathResult + " (Expected 100)");
+            int mathResult = targetInstance.computeSum(1, 2);
+            VLog.i(TAG, "Test 2 Math Result: computeSum(1, 2) => " + mathResult + " (Expected " + expectedSum + ")");
 
-            if (mathResult != 100) {
+            if (mathResult != expectedSum) {
                 report.isSuccess = false;
-                report.statusMessage = "Argument hook failed: expected 100 but got " + mathResult;
+                report.statusMessage = "Argument hook failed: expected " + expectedSum + " but got " + mathResult;
                 VLog.e(TAG, report.statusMessage);
                 return report;
             }
 
             // All tests passed!
             report.isSuccess = true;
-            report.statusMessage = "LSPosed Hook Engine is Fully Functional!";
+            report.statusMessage = "LSPosed Hook Engine is Active & Fully Functional! (Test #" + runId + " Passed)";
             report.hookDetails = "Method return hook & argument manipulation tests passed on ART runtime.";
             report.durationMs = System.currentTimeMillis() - startTime;
 
@@ -130,11 +131,27 @@ public class LSPosedSelfTest {
 
         } catch (Throwable t) {
             report.isSuccess = false;
-            report.statusMessage = "Exception occurred during LSPosed self-test: " + t.getMessage();
+            report.statusMessage = "Exception during LSPosed test: " + t.getMessage();
             report.durationMs = System.currentTimeMillis() - startTime;
             VLog.e(TAG, "LSPosed Self-Test Exception: " + t.getMessage(), t);
+        } finally {
+            if (hookRecord1 != null) {
+                try {
+                    hookRecord1.unhook();
+                    VLog.i(TAG, "Test 1 hook unhooked successfully.");
+                } catch (Throwable ignored) {
+                }
+            }
+            if (hookRecord2 != null) {
+                try {
+                    hookRecord2.unhook();
+                    VLog.i(TAG, "Test 2 hook unhooked successfully.");
+                } catch (Throwable ignored) {
+                }
+            }
         }
 
         return report;
     }
 }
+

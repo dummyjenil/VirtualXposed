@@ -3,15 +3,16 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@android:color/white">
 
-
-    <io.virtualapp.widgets.DragSelectRecyclerView
+    <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/select_app_recycler_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:scrollbars="vertical"
-        app:dsrv_autoScrollEnabled="false" />
+        android:clipToPadding="false"
+        android:paddingBottom="80dp"
+        android:scrollbars="vertical" />
 
     <ProgressBar
         android:id="@+id/select_app_progress_bar"
@@ -19,24 +20,28 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center" />
 
-    <Button
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/select_app_install_btn"
         android:layout_width="match_parent"
-        android:layout_height="50dp"
-        android:layout_gravity="bottom|center"
-        android:layout_margin="15dp"
-        android:background="@drawable/sel_clone_app_btn"
+        android:layout_height="54dp"
+        android:layout_gravity="bottom"
+        android:layout_margin="16dp"
+        android:enabled="false"
         android:text="@string/list_app_activity_install"
-        android:textColor="@color/desktopColorB"
-        android:textSize="17sp"
-        tools:ignore="HardcodedText" />
+        android:textAllCaps="false"
+        android:textSize="15sp"
+        app:cornerRadius="12dp" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/select_app_from_external"
-        android:src="@drawable/ic_add"
-        android:layout_gravity="bottom|end"
-        android:layout_marginBottom="100dp"
-        android:layout_marginRight="40dp"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="20dp"
+        android:layout_marginRight="20dp"
+        android:layout_marginBottom="84dp"
+        android:contentDescription="Select APK from storage"
+        android:src="@drawable/ic_add"
+        app:elevation="6dp" />
+
 </FrameLayout>

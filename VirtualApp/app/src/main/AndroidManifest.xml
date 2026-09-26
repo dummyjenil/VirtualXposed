@@ -31,8 +31,7 @@
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/vxp"
-        android:theme="@style/AppTheme"
-        tools:replace="android:label">
+        android:theme="@style/AppTheme">
 
         <meta-data
             android:name="android.max_aspect"
@@ -54,7 +53,7 @@
             android:name=".home.ListAppActivity"
             android:screenOrientation="portrait"
             android:exported="false"
-            android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+            android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar" />
 
         <activity
             android:name=".home.LoadingActivity"
@@ -64,12 +63,6 @@
             android:screenOrientation="portrait"
             android:taskAffinity="va.task.loading"
             android:theme="@style/TransparentTheme" />
-
-        <activity
-            android:name=".settings.AboutActivity"
-            android:screenOrientation="portrait"
-            android:exported="false"
-            android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
 
         <activity 
             android:name=".home.NewHomeActivity"
@@ -82,27 +75,19 @@
             android:exported="false"
             android:theme="@style/SettingsTheme" />
 
-
-        <activity
-            android:name=".settings.RecommendPluginActivity"
-            android:label="@string/settings_plugin_recommend"
-            android:screenOrientation="portrait"
-            android:exported="false"
-            android:theme="@style/Theme.AppCompat.Light" />
-
         <activity
             android:name=".settings.AppManageActivity"
             android:label="@string/settings_app_manage_text"
             android:screenOrientation="portrait"
             android:exported="false"
-            android:theme="@style/Theme.AppCompat.Light" />
+            android:theme="@style/Theme.MaterialComponents.DayNight" />
 
         <activity
             android:name=".settings.TaskManageActivity"
             android:label="@string/settings_task_manage_text"
             android:screenOrientation="portrait"
             android:exported="false"
-            android:theme="@style/Theme.AppCompat.Light" />
+            android:theme="@style/Theme.MaterialComponents.DayNight" />
 
         <activity
             android:name=".sys.ShareBridgeActivity"
@@ -111,7 +96,7 @@
             android:label="@string/shared_to_vxp"
             android:screenOrientation="portrait"
             android:taskAffinity="${applicationId}.share"
-            android:theme="@style/Theme.AppCompat.Light.Dialog"
+            android:theme="@style/Theme.MaterialComponents.DayNight.Dialog"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
@@ -130,7 +115,7 @@
             android:label="@string/app_installer_label"
             android:noHistory="true"
             android:taskAffinity="${applicationId}.installer"
-            android:theme="@style/Theme.AppCompat.Light" />
+            android:theme="@style/Theme.MaterialComponents.DayNight" />
 
         <activity-alias
             android:name="vxp.installer"
@@ -171,10 +156,7 @@
         </activity-alias>
 
 
-        <service
-            android:name=".update.VAVersionService"
-            android:enabled="true"
-            android:exported="true" />
+
 
         <receiver
             android:name=".dev.CmdReceiver"

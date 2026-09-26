@@ -1,81 +1,116 @@
 package io.virtualapp.home.adapters;
 
 import android.content.Context;
-import androidx.annotation.Nullable;
-import androidx.recyclerview.widget.RecyclerView;
-import androidx.recyclerview.widget.StaggeredGridLayoutManager;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.recyclerview.widget.RecyclerView;
+
 import java.io.File;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import io.virtualapp.R;
-import io.virtualapp.abs.ui.VUiKit;
 import io.virtualapp.glide.GlideUtils;
 import io.virtualapp.home.models.AppInfo;
-import io.virtualapp.widgets.DragSelectRecyclerViewAdapter;
-import io.virtualapp.widgets.LabelView;
 
 /**
- * @author Lody
+ * Clean & Modern Material Adapter for Cloning Apps
  */
-public class CloneAppListAdapter extends DragSelectRecyclerViewAdapter<CloneAppListAdapter.ViewHolder> {
+public class CloneAppListAdapter extends RecyclerView.Adapter<CloneAppListAdapter.ViewHolder> {
 
-    private static final int TYPE_FOOTER = -2;
-    private final View mFooterView;
-    private LayoutInflater mInflater;
-    private List<AppInfo> mAppList;
+    private final Context mContext;
+    private final File mFrom;
+    private final LayoutInflater mInflater;
+    private List<AppInfo> mAppList = new ArrayList<>();
+    private final Set<Integer> mSelectedIndices = new HashSet<>();
     private ItemEventListener mItemEventListener;
+    private SelectionListener mSelectionListener;
 
-    private Context mContext;
-    private File mFrom;
+    public interface ItemEventListener {
+        void onItemClick(AppInfo info, int position);
+        boolean isSelectable(int position);
+    }
 
+    public interface SelectionListener {
+        void onSelectedCountChanged(int count);
+    }
 
     public CloneAppListAdapter(Context context, @Nullable File from) {
-        mContext = context;
-        mFrom = from;
+        this.mContext = context;
+        this.mFrom = from;
         this.mInflater = LayoutInflater.from(context);
-        mFooterView = new View(context);
-        StaggeredGridLayoutManager.LayoutParams params = new StaggeredGridLayoutManager.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, VUiKit.dpToPx(context, 60)
-        );
-        params.setFullSpan(true);
-        mFooterView.setLayoutParams(params);
-
     }
 
-    public void setOnItemClickListener(ItemEventListener mItemEventListener) {
-        this.mItemEventListener = mItemEventListener;
+    public void setOnItemClickListener(ItemEventListener listener) {
+        this.mItemEventListener = listener;
     }
 
-    public List<AppInfo> getList() {
-        return mAppList;
+    public void setSelectionListener(SelectionListener listener) {
+        this.mSelectionListener = listener;
     }
 
     public void setList(List<AppInfo> models) {
-        this.mAppList = models;
+        this.mAppList = models != null ? models : new ArrayList<>();
+        this.mSelectedIndices.clear();
         notifyDataSetChanged();
+        if (mSelectionListener != null) {
+            mSelectionListener.onSelectedCountChanged(0);
+        }
+    }
+
+    public AppInfo getItem(int position) {
+        if (position >= 0 && position < mAppList.size()) {
+            return mAppList.get(position);
+        }
+        return null;
+    }
+
+    public void toggleSelected(int position) {
+        if (mSelectedIndices.contains(position)) {
+            mSelectedIndices.remove(position);
+        } else {
+            mSelectedIndices.add(position);
+        }
+        notifyItemChanged(position);
+        if (mSelectionListener != null) {
+            mSelectionListener.onSelectedCountChanged(mSelectedIndices.size());
+        }
+    }
+
+    public boolean isIndexSelected(int position) {
+        return mSelectedIndices.contains(position);
+    }
+
+    public int getSelectedCount() {
+        return mSelectedIndices.size();
+    }
+
+    public Integer[] getSelectedIndices() {
+        return mSelectedIndices.toArray(new Integer[0]);
+    }
+
+    @NonNull
+    @Override
+    public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        View view = mInflater.inflate(R.layout.item_clone_app, parent, false);
+        return new ViewHolder(view);
     }
 
     @Override
-    public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        if (viewType == TYPE_FOOTER) {
-            return new ViewHolder(mFooterView);
-        }
-        return new ViewHolder(mInflater.inflate(R.layout.item_clone_app, null));
-    }
-
-    @Override
-    public void onBindViewHolder(ViewHolder holder, int position) {
-        if (getItemViewType(position) == TYPE_FOOTER) {
-            return;
-        }
-        super.onBindViewHolder(holder, position);
+    public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         AppInfo info = mAppList.get(position);
+        holder.nameView.setText(info.name);
+
+        String versionText = (info.version != null ? "v" + info.version : "") + (info.splitApk ? " [Split]" : "");
+        holder.versionView.setText(versionText);
 
         if (mFrom == null) {
             GlideUtils.loadInstalledPackageIcon(mContext, info.packageName, holder.iconView, android.R.drawable.sym_def_app_icon);
@@ -83,74 +118,43 @@ public class CloneAppListAdapter extends DragSelectRecyclerViewAdapter<CloneAppL
             GlideUtils.loadPackageIconFromApkFile(mContext, info.path, holder.iconView, android.R.drawable.sym_def_app_icon);
         }
 
-        holder.nameView.setText(String.format("%s: %s%s", info.name, info.version, info.splitApk ? " [S]" : ""));
-        if (isIndexSelected(position)) {
-            holder.iconView.setAlpha(1f);
-            holder.appCheckView.setImageResource(R.drawable.ic_check);
-        } else {
-            holder.iconView.setAlpha(0.65f);
-            holder.appCheckView.setImageResource(R.drawable.ic_no_check);
-        }
+        boolean isSelected = isIndexSelected(position);
+        holder.checkView.setImageResource(isSelected ? R.drawable.ic_check : R.drawable.ic_no_check);
+
         if (info.cloneCount > 0) {
-            holder.labelView.setVisibility(View.VISIBLE);
-            holder.labelView.setText(info.cloneCount + 1 + "");
+            holder.cloneCountView.setVisibility(View.VISIBLE);
+            holder.cloneCountView.setText("Cloned: " + info.cloneCount);
         } else {
-            holder.labelView.setVisibility(View.INVISIBLE);
+            holder.cloneCountView.setVisibility(View.GONE);
         }
 
         holder.itemView.setOnClickListener(v -> {
-            mItemEventListener.onItemClick(info, position);
+            int pos = holder.getAdapterPosition();
+            if (pos != RecyclerView.NO_POSITION && mItemEventListener != null) {
+                mItemEventListener.onItemClick(mAppList.get(pos), pos);
+            }
         });
     }
 
     @Override
-    public void onAttachedToRecyclerView(RecyclerView recyclerView) {
-        super.onAttachedToRecyclerView(recyclerView);
-    }
-
-    @Override
-    protected boolean isIndexSelectable(int index) {
-        return mItemEventListener.isSelectable(index);
-    }
-
-    @Override
     public int getItemCount() {
-        return mAppList == null ? 1 : mAppList.size() + 1;
+        return mAppList.size();
     }
 
-    @Override
-    public int getItemViewType(int position) {
-        if (position == getItemCount() - 1) {
-            return TYPE_FOOTER;
-        }
-        return super.getItemViewType(position);
-    }
+    public static class ViewHolder extends RecyclerView.ViewHolder {
+        final ImageView iconView;
+        final TextView nameView;
+        final TextView versionView;
+        final TextView cloneCountView;
+        final ImageView checkView;
 
-    public AppInfo getItem(int index) {
-        return mAppList.get(index);
-    }
-
-    public interface ItemEventListener {
-
-        void onItemClick(AppInfo appData, int position);
-
-        boolean isSelectable(int position);
-    }
-
-    class ViewHolder extends RecyclerView.ViewHolder {
-        private ImageView iconView;
-        private TextView nameView;
-        private ImageView appCheckView;
-        private LabelView labelView;
-
-        ViewHolder(View itemView) {
+        public ViewHolder(@NonNull View itemView) {
             super(itemView);
-            if (itemView != mFooterView) {
-                iconView = (ImageView) itemView.findViewById(R.id.item_app_icon);
-                nameView = (TextView) itemView.findViewById(R.id.item_app_name);
-                appCheckView = (ImageView) itemView.findViewById(R.id.item_app_checked);
-                labelView = (LabelView) itemView.findViewById(R.id.item_app_clone_count);
-            }
+            iconView = itemView.findViewById(R.id.item_app_icon);
+            nameView = itemView.findViewById(R.id.item_app_name);
+            versionView = itemView.findViewById(R.id.item_app_version);
+            cloneCountView = itemView.findViewById(R.id.item_app_clone_count);
+            checkView = itemView.findViewById(R.id.item_app_checked);
         }
     }
 }

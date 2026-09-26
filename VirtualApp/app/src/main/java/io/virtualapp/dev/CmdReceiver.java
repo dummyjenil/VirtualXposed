@@ -32,7 +32,7 @@ public class CmdReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         String action = intent.getAction();
-        if (!ACTION.equalsIgnoreCase(action)) {
+        if (action == null || (!action.endsWith(".CMD") && !ACTION.equalsIgnoreCase(action))) {
             return;
         }
 
